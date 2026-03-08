@@ -11,11 +11,32 @@ def main() -> None:
     """Parse CLI input, run the agent task loop, and print results."""
     if len(sys.argv) < 2:
         print("Usage: python main.py \"<task>\"")
+        print("   or: python main.py scan <repo_path>")
+        return
+
+    print("Starting Hephaestus...")
+    agent = HephaestusAgent()
+
+    if sys.argv[1] == "scan":
+        if len(sys.argv) < 3:
+            print("Usage: python main.py scan <repo_path>")
+            return
+
+        repo_path = sys.argv[2]
+        index = agent.scan_repo(repo_path)
+        entrypoints_summary = ", ".join(index["entrypoints"]) or "None"
+        config_summary = ", ".join(index["config_files"]) or "None"
+
+        print("Repository Scan Complete")
+        print("")
+        print(f"Total files: {index['total_files']}")
+        print(f"Python files: {len(index['python_files'])}")
+        print(f"Test files: {len(index['test_files'])}")
+        print(f"Entrypoints: {entrypoints_summary}")
+        print(f"Config files: {config_summary}")
         return
 
     task = " ".join(sys.argv[1:]).strip()
-    print("Starting Hephaestus...")
-    agent = HephaestusAgent()
     result = agent.run_task(task)
     print(result)
 

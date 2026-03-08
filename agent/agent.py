@@ -6,6 +6,7 @@ from datetime import datetime
 from pathlib import Path
 
 from .planner import TaskPlanner
+from .repo_scanner import RepoScanner
 from .tools import run_command
 
 
@@ -21,7 +22,15 @@ class HephaestusAgent:
         self.prompt_path = Path(prompt_path)
         self.log_path = Path(log_path)
         self.planner = TaskPlanner()
+        self.repo_scanner = RepoScanner(index_path=Path("memory") / "repo_index.json")
         self.instructions = self.prompt_path.read_text(encoding="utf-8")
+
+    def scan_repo(self, repo_path: str) -> dict:
+        """Scan a repository and persist its index to memory."""
+        self.log(f"REPO_SCAN_START {repo_path}")
+        index = self.repo_scanner.scan_repository(repo_path)
+        self.log(f"REPO_SCAN_COMPLETE total_files={index['total_files']}")
+        return index
 
     def run_task(self, task: str) -> str:
         """Create a plan and execute steps for the given task."""
