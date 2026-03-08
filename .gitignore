@@ -8,7 +8,8 @@ __pycache__/
 *$py.class
 
 # Runtime logs
-logs/
+logs/*
+!logs/.gitkeep
 *.log
 
 # Editor settings
