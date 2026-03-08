@@ -132,6 +132,23 @@ Preferred style example:
 `Validation:`
 - `All tests passing`
 
+## 9. Documentation Maintenance
+
+Documentation must be updated whenever behavior, architecture, commands, or workflows change.
+
+Requirements:
+
+- Update `README.md` when adding or changing user-facing capabilities.
+- Update `CHANGELOG.md` for all shipped features, behavior changes, and major fixes.
+- Update command usage examples when CLI behavior changes.
+- Update architecture/component lists when new modules are introduced.
+- Update logging/event documentation when lifecycle events are added or renamed.
+- Keep documentation changes in the same pull request/commit set as the feature when practical.
+
+Goal:
+
+- Repository docs should remain accurate enough that contributors can understand current capabilities without reading code diffs.
+
 ## AI Operating Contract
 
 AI assistants modifying this repository must:
@@ -141,3 +158,4 @@ AI assistants modifying this repository must:
 3. Prefer incremental improvements over rewrites.
 4. Maintain lifecycle logging events used by smoke tests.
 5. Preserve compatibility with the agent execution loop.
+6. Update documentation when implementing feature or interface changes.
