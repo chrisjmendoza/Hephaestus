@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import datetime
 from pathlib import Path
 
@@ -9,6 +10,7 @@ from .planner import TaskPlanner
 from .repo_query import RepoQuery
 from .repo_scanner import RepoScanner
 from .repo_semantic import RepoSemanticIndex
+from .task_reasoner import TaskReasoner
 from .tools import run_command
 
 
@@ -27,6 +29,10 @@ class HephaestusAgent:
         self.repo_scanner = RepoScanner(index_path=Path("memory") / "repo_index.json")
         self.repo_query = RepoQuery(index_path=Path("memory") / "repo_index.json")
         self.repo_semantic = RepoSemanticIndex(
+            index_path=Path("memory") / "repo_index.json",
+            embeddings_path=Path("memory") / "repo_embeddings.json",
+        )
+        self.task_reasoner = TaskReasoner(
             index_path=Path("memory") / "repo_index.json",
             embeddings_path=Path("memory") / "repo_embeddings.json",
         )
@@ -68,6 +74,19 @@ class HephaestusAgent:
         results = self.repo_semantic.search(query, top_k=top_k)
         self.log(f"SEMANTIC_SEARCH_COMPLETE matches={len(results)}")
         return results
+
+    def generate_task_plan(self, task: str, repo_path: str = ".") -> list[str]:
+        """Generate and persist a structured development plan for a task."""
+        self.log(f"TASK_REASON_START {task}")
+        plan = self.task_reasoner.generate_plan(task, repo_path=repo_path)
+
+        task_plan_path = Path("memory") / "task_plan.json"
+        task_plan_path.parent.mkdir(parents=True, exist_ok=True)
+        payload = {"task": task, "plan": plan}
+        task_plan_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+        self.log(f"TASK_REASON_COMPLETE steps={len(plan)}")
+        return plan
 
     def run_task(self, task: str) -> str:
         """Create a plan and execute steps for the given task."""

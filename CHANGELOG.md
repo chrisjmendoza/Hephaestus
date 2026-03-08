@@ -2,6 +2,19 @@
 
 All notable changes to Hephaestus are documented in this file.
 
+## v0.5 — Task reasoning with repository context (2026-03-08)
+
+### Added
+- Added `agent/task_reasoner.py` with `TaskReasoner.generate_plan(task, repo_path=".")`.
+- Added plan persistence to `memory/task_plan.json`.
+- Added task reasoning smoke test `tests/task_reasoner_test.py`.
+
+### Changed
+- Added `HephaestusAgent.generate_task_plan(task, repo_path=".")`.
+- Added reasoning lifecycle logs: `TASK_REASON_START`, `TASK_REASON_COMPLETE`.
+- Added CLI command: `python main.py plan "<task>"`.
+- Extended planning flow to use semantic repository context and file snippets.
+
 ## v0.4.2 — Documentation sweep and changelog governance (2026-03-08)
 
 ### Added

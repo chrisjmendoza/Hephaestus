@@ -14,6 +14,7 @@ def main() -> None:
         print("   or: python main.py scan <repo_path>")
         print("   or: python main.py query <python|tests|entrypoints|dirs>")
         print("   or: python main.py semantic \"<query>\"")
+        print("   or: python main.py plan \"<task>\"")
         return
 
     print("Starting Hephaestus...")
@@ -70,6 +71,19 @@ def main() -> None:
         print("")
         for index, path in enumerate(results, start=1):
             print(f"{index}. {path}")
+        return
+
+    if sys.argv[1] == "plan":
+        if len(sys.argv) < 3:
+            print("Usage: python main.py plan \"<task>\"")
+            return
+
+        task = " ".join(sys.argv[2:]).strip()
+        plan = agent.generate_task_plan(task, repo_path=".")
+
+        print("PLAN")
+        for index, step in enumerate(plan, start=1):
+            print(f"{index}. {step}")
         return
 
     task = " ".join(sys.argv[1:]).strip()
