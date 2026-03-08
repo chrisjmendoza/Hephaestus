@@ -79,6 +79,7 @@ class RepoScanner:
 
         index = {
             "total_files": len(all_files),
+            "files": sorted(set(all_files)),
             "python_files": sorted(set(python_files)),
             "test_files": sorted(set(test_files)),
             "entrypoints": sorted(set(entrypoints)),

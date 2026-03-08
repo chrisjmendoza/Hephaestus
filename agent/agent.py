@@ -6,6 +6,7 @@ from datetime import datetime
 from pathlib import Path
 
 from .planner import TaskPlanner
+from .repo_query import RepoQuery
 from .repo_scanner import RepoScanner
 from .tools import run_command
 
@@ -23,6 +24,7 @@ class HephaestusAgent:
         self.log_path = Path(log_path)
         self.planner = TaskPlanner()
         self.repo_scanner = RepoScanner(index_path=Path("memory") / "repo_index.json")
+        self.repo_query = RepoQuery(index_path=Path("memory") / "repo_index.json")
         self.instructions = self.prompt_path.read_text(encoding="utf-8")
 
     def scan_repo(self, repo_path: str) -> dict:
@@ -31,6 +33,28 @@ class HephaestusAgent:
         index = self.repo_scanner.scan_repository(repo_path)
         self.log(f"REPO_SCAN_COMPLETE total_files={index['total_files']}")
         return index
+
+    def query_repo(self, query_type: str) -> list[str] | dict[str, int]:
+        """Query repository index data by query type."""
+        self.log(f"REPO_QUERY_START {query_type}")
+
+        if query_type == "python":
+            result = self.repo_query.get_python_files()
+        elif query_type == "tests":
+            result = self.repo_query.get_test_files()
+        elif query_type == "entrypoints":
+            result = self.repo_query.get_entrypoints()
+        elif query_type == "config":
+            result = self.repo_query.get_config_files()
+        elif query_type == "dirs":
+            result = self.repo_query.get_directory_summary()
+        else:
+            raise ValueError(
+                "Unsupported query type. Use: python, tests, entrypoints, config, dirs"
+            )
+
+        self.log(f"REPO_QUERY_COMPLETE {query_type}")
+        return result
 
     def run_task(self, task: str) -> str:
         """Create a plan and execute steps for the given task."""

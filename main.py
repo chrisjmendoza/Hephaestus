@@ -12,6 +12,7 @@ def main() -> None:
     if len(sys.argv) < 2:
         print("Usage: python main.py \"<task>\"")
         print("   or: python main.py scan <repo_path>")
+        print("   or: python main.py query <python|tests|entrypoints|dirs>")
         return
 
     print("Starting Hephaestus...")
@@ -34,6 +35,27 @@ def main() -> None:
         print(f"Test files: {len(index['test_files'])}")
         print(f"Entrypoints: {entrypoints_summary}")
         print(f"Config files: {config_summary}")
+        return
+
+    if sys.argv[1] == "query":
+        if len(sys.argv) < 3:
+            print("Usage: python main.py query <python|tests|entrypoints|dirs>")
+            return
+
+        query_type = sys.argv[2]
+        result = agent.query_repo(query_type)
+
+        if query_type == "python":
+            print(f"Python files detected: {len(result)}")
+        elif query_type == "tests":
+            print(f"tests detected: {len(result)}")
+        elif query_type == "entrypoints":
+            summary = ", ".join(result) if result else "None"
+            print(f"entrypoints: {summary}")
+        elif query_type == "dirs":
+            print("Directory summary:")
+            for directory, count in result.items():
+                print(f"{directory}: {count}")
         return
 
     task = " ".join(sys.argv[1:]).strip()
