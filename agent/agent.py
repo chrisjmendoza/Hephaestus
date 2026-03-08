@@ -8,6 +8,7 @@ from pathlib import Path
 from .planner import TaskPlanner
 from .repo_query import RepoQuery
 from .repo_scanner import RepoScanner
+from .repo_semantic import RepoSemanticIndex
 from .tools import run_command
 
 
@@ -25,6 +26,10 @@ class HephaestusAgent:
         self.planner = TaskPlanner()
         self.repo_scanner = RepoScanner(index_path=Path("memory") / "repo_index.json")
         self.repo_query = RepoQuery(index_path=Path("memory") / "repo_index.json")
+        self.repo_semantic = RepoSemanticIndex(
+            index_path=Path("memory") / "repo_index.json",
+            embeddings_path=Path("memory") / "repo_embeddings.json",
+        )
         self.instructions = self.prompt_path.read_text(encoding="utf-8")
 
     def scan_repo(self, repo_path: str) -> dict:
@@ -55,6 +60,14 @@ class HephaestusAgent:
 
         self.log(f"REPO_QUERY_COMPLETE {query_type}")
         return result
+
+    def semantic_search(self, query: str, repo_path: str = ".", top_k: int = 5) -> list[str]:
+        """Build and query semantic repository index for a natural-language query."""
+        self.log(f"SEMANTIC_SEARCH_START {query}")
+        self.repo_semantic.build_index(repo_path)
+        results = self.repo_semantic.search(query, top_k=top_k)
+        self.log(f"SEMANTIC_SEARCH_COMPLETE matches={len(results)}")
+        return results
 
     def run_task(self, task: str) -> str:
         """Create a plan and execute steps for the given task."""

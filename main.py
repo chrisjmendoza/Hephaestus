@@ -13,6 +13,7 @@ def main() -> None:
         print("Usage: python main.py \"<task>\"")
         print("   or: python main.py scan <repo_path>")
         print("   or: python main.py query <python|tests|entrypoints|dirs>")
+        print("   or: python main.py semantic \"<query>\"")
         return
 
     print("Starting Hephaestus...")
@@ -56,6 +57,19 @@ def main() -> None:
             print("Directory summary:")
             for directory, count in result.items():
                 print(f"{directory}: {count}")
+        return
+
+    if sys.argv[1] == "semantic":
+        if len(sys.argv) < 3:
+            print("Usage: python main.py semantic \"<query>\"")
+            return
+
+        query = " ".join(sys.argv[2:]).strip()
+        results = agent.semantic_search(query, repo_path=".")
+        print("Top matches:")
+        print("")
+        for index, path in enumerate(results, start=1):
+            print(f"{index}. {path}")
         return
 
     task = " ".join(sys.argv[1:]).strip()
