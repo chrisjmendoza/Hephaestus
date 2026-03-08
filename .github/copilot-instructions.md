@@ -97,6 +97,41 @@ Future versions of Hephaestus will add:
 
 AI assistants should preserve modularity to support these future features.
 
+## 8. Commit Message Standards
+
+Commit messages must be readable and informative without requiring code diff inspection.
+
+Use this structure:
+
+1. Title line: concise scope + version context when relevant.
+2. One-sentence summary: what capability changed.
+3. `Capabilities:` list: key behaviors added/changed.
+4. `Validation:` short test status summary.
+
+Guidelines:
+
+- Prefer clear, plain language over terse shorthand.
+- Include user-facing command changes when applicable.
+- Mention new lifecycle logging events when added.
+- Mention important helper methods/classes introduced.
+- Keep subject focused on one change set.
+
+Preferred style example:
+
+`v0.4 — Semantic repository search`
+
+`Adds semantic indexing and search using sentence-transformers.`
+
+`Capabilities:`
+- `Builds local embedding index for repository files`
+- `Semantic search returns top relevant files`
+- `CLI command: main.py semantic "<query>"`
+- `Agent helper: semantic_search()`
+- `Logging events for semantic search lifecycle`
+
+`Validation:`
+- `All tests passing`
+
 ## AI Operating Contract
 
 AI assistants modifying this repository must:
