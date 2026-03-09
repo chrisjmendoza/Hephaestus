@@ -2,6 +2,21 @@
 
 All notable changes to Hephaestus are documented in this file.
 
+## v0.5.1 — Multi-language repository support (2026-03-08)
+
+### Added
+- Added multi-language scan categories: `kotlin_files`, `java_files`, `js_files`, `xml_files`, `gradle_files`.
+- Added language summary in index: `language_counts`.
+- Added multi-language scan smoke test `tests/repo_multilang_test.py`.
+
+### Changed
+- Extended scanner language detection for `.kt`, `.java`, `.js`, `.ts`, `.xml`, `.gradle`, `.kts`.
+- Added Android entrypoint detection: `MainActivity.kt`, `Application.kt`, `AndroidManifest.xml`.
+- Extended semantic index sources to include Python/Kotlin/Java/JS and small XML files.
+- Limited semantic embedding content to first 1000 characters per file.
+- Added semantic CLI repo targeting: `python main.py semantic "<query>" --repo <path>`.
+- Added logs: `REPO_LANGUAGE_DETECTED`, `MULTILANG_INDEX_BUILD`.
+
 ## v0.5 — Task reasoning with repository context (2026-03-08)
 
 ### Added

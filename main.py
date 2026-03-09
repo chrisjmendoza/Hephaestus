@@ -13,7 +13,7 @@ def main() -> None:
         print("Usage: python main.py \"<task>\"")
         print("   or: python main.py scan <repo_path>")
         print("   or: python main.py query <python|tests|entrypoints|dirs>")
-        print("   or: python main.py semantic \"<query>\"")
+        print("   or: python main.py semantic \"<query>\" --repo <path>")
         print("   or: python main.py plan \"<task>\"")
         return
 
@@ -62,11 +62,27 @@ def main() -> None:
 
     if sys.argv[1] == "semantic":
         if len(sys.argv) < 3:
-            print("Usage: python main.py semantic \"<query>\"")
+            print("Usage: python main.py semantic \"<query>\" --repo <path>")
             return
 
-        query = " ".join(sys.argv[2:]).strip()
-        results = agent.semantic_search(query, repo_path=".")
+        semantic_args = sys.argv[2:]
+        repo_path = "."
+        if "--repo" in semantic_args:
+            repo_flag_index = semantic_args.index("--repo")
+            if repo_flag_index + 1 >= len(semantic_args):
+                print("Usage: python main.py semantic \"<query>\" --repo <path>")
+                return
+            repo_path = semantic_args[repo_flag_index + 1]
+            query_parts = semantic_args[:repo_flag_index]
+        else:
+            query_parts = semantic_args
+
+        query = " ".join(query_parts).strip()
+        if not query:
+            print("Usage: python main.py semantic \"<query>\" --repo <path>")
+            return
+
+        results = agent.semantic_search(query, repo_path=repo_path)
         print("Top matches:")
         print("")
         for index, path in enumerate(results, start=1):

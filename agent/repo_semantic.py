@@ -10,7 +10,7 @@ from sentence_transformers import SentenceTransformer
 
 
 class RepoSemanticIndex:
-    """Builds and queries semantic embeddings for repository Python files."""
+    """Builds and queries semantic embeddings for repository source files."""
 
     def __init__(
         self,
@@ -39,19 +39,39 @@ class RepoSemanticIndex:
         return json.loads(self.index_path.read_text(encoding="utf-8"))
 
     def build_index(self, repo_path: str) -> dict:
-        """Build semantic embeddings for indexed Python files and persist them."""
+        """Build semantic embeddings for indexed source files and persist them."""
         repo_root = Path(repo_path).resolve()
         repo_index = self._load_repo_index()
-        python_files = repo_index.get("python_files", [])
 
-        texts: list[str] = []
-        paths: list[str] = []
-        for relative_path in python_files:
+        source_files = (
+            repo_index.get("python_files", [])
+            + repo_index.get("kotlin_files", [])
+            + repo_index.get("java_files", [])
+            + repo_index.get("js_files", [])
+        )
+
+        xml_candidates = repo_index.get("xml_files", [])
+        xml_files: list[str] = []
+        for relative_path in xml_candidates:
             file_path = repo_root / relative_path
             if not file_path.exists():
                 continue
             try:
-                content = file_path.read_text(encoding="utf-8")
+                if file_path.stat().st_size < 10_000:
+                    xml_files.append(relative_path)
+            except OSError:
+                continue
+
+        index_files = sorted(set(source_files + xml_files))
+
+        texts: list[str] = []
+        paths: list[str] = []
+        for relative_path in index_files:
+            file_path = repo_root / relative_path
+            if not file_path.exists():
+                continue
+            try:
+                content = file_path.read_text(encoding="utf-8")[:1000]
             except UnicodeDecodeError:
                 continue
             texts.append(content)

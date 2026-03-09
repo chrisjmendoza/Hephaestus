@@ -42,6 +42,7 @@ class HephaestusAgent:
         """Scan a repository and persist its index to memory."""
         self.log(f"REPO_SCAN_START {repo_path}")
         index = self.repo_scanner.scan_repository(repo_path)
+        self.log(f"REPO_LANGUAGE_DETECTED {index.get('language_counts', {})}")
         self.log(f"REPO_SCAN_COMPLETE total_files={index['total_files']}")
         return index
 
@@ -70,7 +71,9 @@ class HephaestusAgent:
     def semantic_search(self, query: str, repo_path: str = ".", top_k: int = 5) -> list[str]:
         """Build and query semantic repository index for a natural-language query."""
         self.log(f"SEMANTIC_SEARCH_START {query}")
+        self.scan_repo(repo_path)
         self.repo_semantic.build_index(repo_path)
+        self.log("MULTILANG_INDEX_BUILD")
         results = self.repo_semantic.search(query, top_k=top_k)
         self.log(f"SEMANTIC_SEARCH_COMPLETE matches={len(results)}")
         return results

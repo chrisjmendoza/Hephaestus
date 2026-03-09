@@ -34,6 +34,20 @@ class RepoScanner:
         "server.py",
         "run.py",
         "__main__.py",
+        "MainActivity.kt",
+        "Application.kt",
+        "AndroidManifest.xml",
+    }
+
+    _LANGUAGE_EXTENSION_MAP = {
+        ".py": "python",
+        ".kt": "kotlin",
+        ".java": "java",
+        ".xml": "xml",
+        ".js": "javascript",
+        ".ts": "javascript",
+        ".gradle": "gradle",
+        ".kts": "gradle",
     }
 
     def __init__(self, index_path: str | Path = "memory/repo_index.json") -> None:
@@ -45,6 +59,11 @@ class RepoScanner:
         root = Path(repo_path).resolve()
 
         python_files: list[str] = []
+        kotlin_files: list[str] = []
+        java_files: list[str] = []
+        js_files: list[str] = []
+        xml_files: list[str] = []
+        gradle_files: list[str] = []
         test_files: list[str] = []
         entrypoints: list[str] = []
         config_files: list[str] = []
@@ -63,8 +82,19 @@ class RepoScanner:
             all_files.append(relative_path)
 
             name_lower = path.name.lower()
-            if path.suffix == ".py":
+            language = self._LANGUAGE_EXTENSION_MAP.get(path.suffix.lower())
+            if language == "python":
                 python_files.append(relative_path)
+            elif language == "kotlin":
+                kotlin_files.append(relative_path)
+            elif language == "java":
+                java_files.append(relative_path)
+            elif language == "javascript":
+                js_files.append(relative_path)
+            elif language == "xml":
+                xml_files.append(relative_path)
+            elif language == "gradle":
+                gradle_files.append(relative_path)
 
             if name_lower.startswith("test_") and path.suffix == ".py":
                 test_files.append(relative_path)
@@ -81,6 +111,19 @@ class RepoScanner:
             "total_files": len(all_files),
             "files": sorted(set(all_files)),
             "python_files": sorted(set(python_files)),
+            "kotlin_files": sorted(set(kotlin_files)),
+            "java_files": sorted(set(java_files)),
+            "js_files": sorted(set(js_files)),
+            "xml_files": sorted(set(xml_files)),
+            "gradle_files": sorted(set(gradle_files)),
+            "language_counts": {
+                "python": len(set(python_files)),
+                "kotlin": len(set(kotlin_files)),
+                "java": len(set(java_files)),
+                "javascript": len(set(js_files)),
+                "xml": len(set(xml_files)),
+                "gradle": len(set(gradle_files)),
+            },
             "test_files": sorted(set(test_files)),
             "entrypoints": sorted(set(entrypoints)),
             "config_files": sorted(set(config_files)),

@@ -13,9 +13,9 @@ Current scope focuses on architecture, readability, and modularity rather than f
 ## Current capabilities
 
 - Task loop execution with lifecycle logging.
-- Repository scanning and structural indexing.
+- Multi-language repository scanning and structural indexing.
 - Repository index querying (Python files, tests, entrypoints, directory summary).
-- Semantic repository search over Python files using local embeddings.
+- Semantic repository search over Python/Kotlin/Java/JS sources (with XML support for small files).
 - Task reasoning and structured plan generation using repository context.
 
 ## CLI commands
@@ -23,7 +23,7 @@ Current scope focuses on architecture, readability, and modularity rather than f
 - `python main.py "<task>"`
 - `python main.py scan <repo_path>`
 - `python main.py query <python|tests|entrypoints|dirs>`
-- `python main.py semantic "<query>"`
+- `python main.py semantic "<query>" --repo <path>`
 - `python main.py plan "<task>"`
 
 ## Project structure
@@ -32,22 +32,22 @@ Current scope focuses on architecture, readability, and modularity rather than f
 - `agent/agent.py`: Core orchestration class (`HephaestusAgent`).
 - `agent/planner.py`: Task planning logic.
 - `agent/tools.py`: Safe tool interface.
-- `agent/repo_scanner.py`: Repository scan and index generation.
+- `agent/repo_scanner.py`: Multi-language repository scan and index generation.
 - `agent/repo_query.py`: Repository index query helpers.
 - `agent/repo_semantic.py`: Semantic index build and semantic search.
 - `agent/task_reasoner.py`: LLM-based task plan generation using semantic repository context.
 - `prompts/dev_agent.md`: System prompt/instructions.
 - `memory/`: Runtime memory artifacts (`repo_index.json`, `repo_embeddings.json`, `task_plan.json`) and static memory files.
 - `logs/`: Agent runtime logs.
-- `tests/`: Smoke tests for lifecycle, scan, query, and semantic search.
+- `tests/`: Smoke tests for lifecycle, scan, query, semantic search, and multi-language indexing.
 - `requirements.txt`: Python dependencies.
 
 ## Logging lifecycle events
 
 - Task loop: `TASK_RECEIVED`, `PLAN_CREATED`, `STEP_START`, `STEP_COMPLETE`, `TASK_COMPLETE`
-- Repository scan: `REPO_SCAN_START`, `REPO_SCAN_COMPLETE`
+- Repository scan: `REPO_SCAN_START`, `REPO_LANGUAGE_DETECTED`, `REPO_SCAN_COMPLETE`
 - Repository query: `REPO_QUERY_START`, `REPO_QUERY_COMPLETE`
-- Semantic search: `SEMANTIC_SEARCH_START`, `SEMANTIC_SEARCH_COMPLETE`
+- Semantic search: `SEMANTIC_SEARCH_START`, `MULTILANG_INDEX_BUILD`, `SEMANTIC_SEARCH_COMPLETE`
 - Task reasoning: `TASK_REASON_START`, `TASK_REASON_COMPLETE`
 
 ## Future goals
