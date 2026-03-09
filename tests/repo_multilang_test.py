@@ -32,6 +32,8 @@ def main() -> None:
         "xml_files",
         "js_files",
         "gradle_files",
+        "csharp_files",
+        "cpp_files",
     ]
     for key in language_keys:
         assert key in payload, f"Missing language index field: {key}"

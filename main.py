@@ -35,6 +35,7 @@ def main() -> None:
         print(f"Total files: {index['total_files']}")
         print(f"Python files: {len(index['python_files'])}")
         print(f"Test files: {len(index['test_files'])}")
+        print(f"Language counts: {index.get('language_counts', {})}")
         print(f"Entrypoints: {entrypoints_summary}")
         print(f"Config files: {config_summary}")
         return

@@ -15,7 +15,7 @@ Current scope focuses on architecture, readability, and modularity rather than f
 - Task loop execution with lifecycle logging.
 - Multi-language repository scanning and structural indexing.
 - Repository index querying (Python files, tests, entrypoints, directory summary).
-- Semantic repository search over Python/Kotlin/Java/JS sources (with XML support for small files).
+- Semantic repository search over Python/Kotlin/Java/JS/C#/C++ sources (with XML support for small files).
 - Task reasoning and structured plan generation using repository context.
 
 ## CLI commands

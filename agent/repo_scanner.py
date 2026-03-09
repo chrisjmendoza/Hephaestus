@@ -48,6 +48,14 @@ class RepoScanner:
         ".ts": "javascript",
         ".gradle": "gradle",
         ".kts": "gradle",
+        ".cs": "csharp",
+        ".cpp": "cpp",
+        ".cc": "cpp",
+        ".cxx": "cpp",
+        ".h": "cpp",
+        ".hpp": "cpp",
+        ".hh": "cpp",
+        ".hxx": "cpp",
     }
 
     def __init__(self, index_path: str | Path = "memory/repo_index.json") -> None:
@@ -64,6 +72,8 @@ class RepoScanner:
         js_files: list[str] = []
         xml_files: list[str] = []
         gradle_files: list[str] = []
+        csharp_files: list[str] = []
+        cpp_files: list[str] = []
         test_files: list[str] = []
         entrypoints: list[str] = []
         config_files: list[str] = []
@@ -95,6 +105,10 @@ class RepoScanner:
                 xml_files.append(relative_path)
             elif language == "gradle":
                 gradle_files.append(relative_path)
+            elif language == "csharp":
+                csharp_files.append(relative_path)
+            elif language == "cpp":
+                cpp_files.append(relative_path)
 
             if name_lower.startswith("test_") and path.suffix == ".py":
                 test_files.append(relative_path)
@@ -116,6 +130,8 @@ class RepoScanner:
             "js_files": sorted(set(js_files)),
             "xml_files": sorted(set(xml_files)),
             "gradle_files": sorted(set(gradle_files)),
+            "csharp_files": sorted(set(csharp_files)),
+            "cpp_files": sorted(set(cpp_files)),
             "language_counts": {
                 "python": len(set(python_files)),
                 "kotlin": len(set(kotlin_files)),
@@ -123,6 +139,8 @@ class RepoScanner:
                 "javascript": len(set(js_files)),
                 "xml": len(set(xml_files)),
                 "gradle": len(set(gradle_files)),
+                "csharp": len(set(csharp_files)),
+                "cpp": len(set(cpp_files)),
             },
             "test_files": sorted(set(test_files)),
             "entrypoints": sorted(set(entrypoints)),

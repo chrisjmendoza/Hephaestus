@@ -48,6 +48,8 @@ class RepoSemanticIndex:
             + repo_index.get("kotlin_files", [])
             + repo_index.get("java_files", [])
             + repo_index.get("js_files", [])
+            + repo_index.get("csharp_files", [])
+            + repo_index.get("cpp_files", [])
         )
 
         xml_candidates = repo_index.get("xml_files", [])
