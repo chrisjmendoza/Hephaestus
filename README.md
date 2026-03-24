@@ -24,6 +24,7 @@ Current scope focuses on architecture, readability, and modularity rather than f
 - Structured task reports: JSON + human-readable summary of plan, patches, test outcomes, and commits, persisted to memory.
 - GitHub API client: fetch issues, list issues by label, post comments, create branches, and open pull requests via `GITHUB_TOKEN`.
 - Issue resolver loop: end-to-end plan → patch → test → commit → PR pipeline triggered by a task description or GitHub issue; includes dry-run mode and tests-pass gate.
+- Target repository manager: clone, pull, and branch-manage external repositories into a local `workspace/` directory; supports `ensure_workspace()` for one-call setup before running the resolver.
 
 ## CLI commands
 
@@ -49,6 +50,7 @@ Current scope focuses on architecture, readability, and modularity rather than f
 - `agent/task_report.py`: Structured task report generation, persistence, and human-readable rendering.
 - `agent/github_client.py`: GitHub API wrapper for issues, comments, branches, and pull requests.
 - `agent/issue_resolver.py`: End-to-end issue resolution orchestrator (plan → patch → test → commit → PR).
+- `agent/repo_manager.py`: Target repository manager — clone, pull, and branch external repos into a local workspace.
 - `prompts/dev_agent.md`: System prompt/instructions.
 - `memory/`: Runtime memory artifacts (`repo_index.json`, `repo_embeddings.json`, `task_plan.json`) and static memory files.
 - `logs/`: Agent runtime logs.
@@ -68,6 +70,7 @@ Current scope focuses on architecture, readability, and modularity rather than f
 - Task reporting: `TASK_REPORT_START`, `TASK_REPORT_COMPLETE`
 - GitHub API: `GH_GET_ISSUE_START/COMPLETE`, `GH_LIST_ISSUES_START/COMPLETE`, `GH_COMMENT_START/COMPLETE/FAILED`, `GH_CREATE_BRANCH_START/COMPLETE/FAILED`, `GH_OPEN_PR_START/COMPLETE/FAILED`
 - Issue resolution: `RESOLVE_ISSUE_START`, `RESOLVE_ISSUE_COMPLETE`, `RESOLVE_ISSUE_FAILED`
+- Workspace management: `WORKSPACE_CLONE_START/COMPLETE`, `WORKSPACE_PULL_START/COMPLETE`, `WORKSPACE_CHECKOUT_START/COMPLETE/FAILED`, `WORKSPACE_ENSURE_START/COMPLETE`, `WORKSPACE_LIST_START/COMPLETE`
 
 ## Future goals
 

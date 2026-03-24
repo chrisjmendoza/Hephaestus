@@ -17,6 +17,7 @@ from .github_client import (
 from .issue_resolver import IssueResolver, ResolveResult
 from .patch_executor import PatchExecutor, PatchResult
 from .planner import TaskPlanner
+from .repo_manager import BranchCheckoutResult, RepoManager, WorkspaceInfo
 from .repo_query import RepoQuery
 from .repo_scanner import RepoScanner
 from .repo_semantic import RepoSemanticIndex
@@ -56,6 +57,7 @@ class HephaestusAgent:
         self._git: GitContext | None = None
         self._github: GitHubClient | None = None
         self._resolver: IssueResolver | None = None
+        self._repo_manager: RepoManager | None = None
         self.instructions = self.prompt_path.read_text(encoding="utf-8")
 
     def _get_git(self, repo_path: str = ".") -> GitContext:
@@ -84,6 +86,12 @@ class HephaestusAgent:
                 github_token=github_token,
             )
         return self._resolver
+
+    def _get_repo_manager(self, workspace_root: str = "workspace") -> RepoManager:
+        """Return a RepoManager, initializing lazily."""
+        if self._repo_manager is None:
+            self._repo_manager = RepoManager(workspace_root=workspace_root)
+        return self._repo_manager
 
     def scan_repo(self, repo_path: str) -> dict:
         """Scan a repository and persist its index to memory."""
@@ -427,6 +435,90 @@ class HephaestusAgent:
         else:
             self.log(f"RESOLVE_ISSUE_FAILED error={result.error!r}")
         return result
+
+    def workspace_clone(
+        self,
+        repo_name: str,
+        clone_url: str | None = None,
+        workspace_root: str = "workspace",
+    ) -> WorkspaceInfo:
+        """Clone a remote repository into the managed workspace."""
+        self.log(f"WORKSPACE_CLONE_START {repo_name}")
+        info = self._get_repo_manager(workspace_root).clone(
+            repo_name, clone_url=clone_url
+        )
+        self.log(
+            f"WORKSPACE_CLONE_COMPLETE {repo_name} "
+            f"path={info.local_path} fresh={info.freshly_cloned}"
+        )
+        return info
+
+    def workspace_pull(
+        self, repo_name: str, workspace_root: str = "workspace"
+    ) -> WorkspaceInfo:
+        """Pull latest changes for an already-cloned repository."""
+        self.log(f"WORKSPACE_PULL_START {repo_name}")
+        info = self._get_repo_manager(workspace_root).pull(repo_name)
+        self.log(f"WORKSPACE_PULL_COMPLETE {repo_name} sha={info.commit_sha}")
+        return info
+
+    def workspace_checkout(
+        self,
+        repo_name: str,
+        branch_name: str,
+        create: bool = False,
+        workspace_root: str = "workspace",
+    ) -> BranchCheckoutResult:
+        """Check out (or create) a branch in a managed workspace."""
+        self.log(f"WORKSPACE_CHECKOUT_START {repo_name} branch={branch_name}")
+        result = self._get_repo_manager(workspace_root).checkout_branch(
+            repo_name, branch_name, create=create
+        )
+        if result.success:
+            action = "created" if result.created else "checked out"
+            self.log(
+                f"WORKSPACE_CHECKOUT_COMPLETE {repo_name} "
+                f"branch={branch_name} {action}"
+            )
+        else:
+            self.log(
+                f"WORKSPACE_CHECKOUT_FAILED {repo_name} "
+                f"branch={branch_name} error={result.error}"
+            )
+        return result
+
+    def workspace_ensure(
+        self,
+        repo_name: str,
+        clone_url: str | None = None,
+        branch_name: str | None = None,
+        create_branch: bool = True,
+        workspace_root: str = "workspace",
+    ) -> WorkspaceInfo:
+        """Clone-or-pull a repo and optionally check out a branch."""
+        self.log(
+            f"WORKSPACE_ENSURE_START {repo_name} branch={branch_name}"
+        )
+        info = self._get_repo_manager(workspace_root).ensure_workspace(
+            repo_name,
+            clone_url=clone_url,
+            branch_name=branch_name,
+            create_branch=create_branch,
+        )
+        self.log(
+            f"WORKSPACE_ENSURE_COMPLETE {repo_name} "
+            f"path={info.local_path} branch={info.branch}"
+        )
+        return info
+
+    def workspace_list(
+        self, workspace_root: str = "workspace"
+    ) -> list[WorkspaceInfo]:
+        """List all managed local repository clones."""
+        self.log("WORKSPACE_LIST_START")
+        workspaces = self._get_repo_manager(workspace_root).list_workspaces()
+        self.log(f"WORKSPACE_LIST_COMPLETE count={len(workspaces)}")
+        return workspaces
 
     def run_task(self, task: str) -> str:
         """Create a plan and execute steps for the given task."""

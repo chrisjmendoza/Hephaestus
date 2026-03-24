@@ -2,6 +2,25 @@
 
 All notable changes to Hephaestus are documented in this file.
 
+## v2.2 — Target repository manager (2026-03-24)
+
+### Added
+- Added `agent/repo_manager.py` with `RepoManager` class.
+- `RepoManager.clone()`: clones a remote repository into a managed `workspace/owner/name` directory; no-op if already cloned.
+- `RepoManager.pull()`: fast-forwards an existing clone from its remote.
+- `RepoManager.checkout_branch()`: switches to an existing local branch or creates a new one (`create=True`).
+- `RepoManager.ensure_workspace()`: convenience method that clone-or-pulls a repo and optionally checks out a branch in one call.
+- `RepoManager.list_workspaces()`: returns `WorkspaceInfo` for every managed local clone.
+- `RepoManager.local_path()`: returns the expected local path for an `owner/name` repository.
+- `WorkspaceInfo` dataclass: `repo_name`, `local_path`, `branch`, `commit_sha`, `freshly_cloned`.
+- `BranchCheckoutResult` dataclass: `success`, `branch_name`, `created`, `error`.
+- Added `HephaestusAgent` wrappers: `workspace_clone()`, `workspace_pull()`, `workspace_checkout()`, `workspace_ensure()`, `workspace_list()` with lifecycle logging.
+- Added lifecycle logs: `WORKSPACE_CLONE_START/COMPLETE`, `WORKSPACE_PULL_START/COMPLETE`, `WORKSPACE_CHECKOUT_START/COMPLETE/FAILED`, `WORKSPACE_ENSURE_START/COMPLETE`, `WORKSPACE_LIST_START/COMPLETE`.
+- Added `tests/repo_manager_test.py` with 10 tests covering clone, no-op clone, pull, pull error, branch create, branch checkout, missing-branch error, ensure_workspace, list, and path structure.
+
+### Changed
+- Updated `README.md` to document repo manager capability, new module, and new lifecycle events.
+
 ## v2.1 — Issue resolver loop (2026-03-24)
 
 ### Added
