@@ -21,6 +21,7 @@ Current scope focuses on architecture, readability, and modularity rather than f
 - File patching with unified diff preview and dry-run safety mode.
 - Test execution with structured pass/fail results and failure reporting.
 - Git-aware workflow: dirty-state detection, working-tree diff, and auto-commit of agent-applied patches.
+- Structured task reports: JSON + human-readable summary of plan, patches, test outcomes, and commits, persisted to memory.
 
 ## CLI commands
 
@@ -43,6 +44,7 @@ Current scope focuses on architecture, readability, and modularity rather than f
 - `agent/patch_executor.py`: File patching with unified diff generation and dry-run support.
 - `agent/test_runner.py`: Test execution via pytest (with direct-run fallback) and structured result reporting.
 - `agent/git_context.py`: Git status inspection, working-tree diff, and auto-commit for agent patches.
+- `agent/task_report.py`: Structured task report generation, persistence, and human-readable rendering.
 - `prompts/dev_agent.md`: System prompt/instructions.
 - `memory/`: Runtime memory artifacts (`repo_index.json`, `repo_embeddings.json`, `task_plan.json`) and static memory files.
 - `logs/`: Agent runtime logs.
@@ -59,6 +61,7 @@ Current scope focuses on architecture, readability, and modularity rather than f
 - Patch execution: `PATCH_START`, `PATCH_PREVIEW`, `PATCH_APPLIED`, `PATCH_SKIPPED`
 - Test execution: `TEST_RUN_START`, `TEST_RUN_COMPLETE`, `TEST_FAILURES`
 - Git workflow: `GIT_STATUS_START`, `GIT_STATUS_COMPLETE`, `GIT_DIFF_START`, `GIT_DIFF_COMPLETE`, `GIT_COMMIT_START`, `GIT_COMMIT_COMPLETE`
+- Task reporting: `TASK_REPORT_START`, `TASK_REPORT_COMPLETE`
 
 ## Future goals
 

@@ -2,6 +2,24 @@
 
 All notable changes to Hephaestus are documented in this file.
 
+## v1.0 — Structured task reporting (2026-03-24)
+
+### Added
+- Added `agent/task_report.py` with `TaskReporter`, `TaskReport`, `PatchEntry`, `TestEntry`, and `CommitEntry`.
+- `TaskReporter.start()`: creates a new in-progress report with task and plan.
+- `TaskReporter.record_patch()`, `record_test()`, `record_commit()`: append structured entries.
+- `TaskReporter.finish()`: marks report complete with outcome and timestamp.
+- `TaskReporter.persist()`: writes report to `memory/task_report.json` as JSON.
+- `TaskReporter.load()`: reads and returns the last persisted report.
+- `TaskReport.to_dict()`: JSON-serializable representation.
+- `TaskReport.to_text()`: human-readable summary including plan, patches, test results, and commits.
+- Added `HephaestusAgent.generate_report()` accepting patch, test, and commit results.
+- Added lifecycle logs: `TASK_REPORT_START`, `TASK_REPORT_COMPLETE`.
+- Added `tests/task_report_test.py` covering build, record, persist, load, text rendering, and agent integration.
+
+### Changed
+- Updated `README.md` to document task report capability and new lifecycle events.
+
 ## v0.9 — Git-aware workflow (2026-03-24)
 
 ### Added
