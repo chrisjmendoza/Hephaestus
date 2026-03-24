@@ -2,6 +2,41 @@
 
 All notable changes to Hephaestus are documented in this file.
 
+## v2.1 — Issue resolver loop (2026-03-24)
+
+### Added
+- Added `agent/issue_resolver.py` with `IssueResolver` class and `ResolveResult` dataclass.
+- `IssueResolver.resolve()`: full plan → patch → test → commit → report → PR pipeline in a single call.
+- `IssueResolver.resolve_issue()`: convenience wrapper that derives the task from a `IssueInfo` object.
+- `dry_run=True` mode: patches are previewed but not written; pipeline stops before commit and PR.
+- Tests-pass gate: commit and PR are skipped (and error set) when tests fail.
+- PR body auto-generated with plan steps, patch list, test summary, and issue close reference.
+- Added `HephaestusAgent.resolve_issue()` with lifecycle logging: `RESOLVE_ISSUE_START`, `RESOLVE_ISSUE_COMPLETE`, `RESOLVE_ISSUE_FAILED`.
+- Added `_get_resolver()` lazy initializer to `HephaestusAgent`.
+- Added `tests/issue_resolver_test.py` with 5 tests covering dry-run, commit-no-PR, test-failure gate, full PR pipeline, and `resolve_issue()` wrapper.
+
+### Changed
+- Updated `README.md` to document issue resolver capability, new module, and new lifecycle events.
+
+## v2.0 — GitHub API client (2026-03-24)
+
+### Added
+- Added `agent/github_client.py` with `GitHubClient` class.
+- `GitHubClient.get_issue()`: fetch issue title, body, labels, state, and URL by number.
+- `GitHubClient.list_issues()`: list issues filtered by label and state.
+- `GitHubClient.post_comment()`: post a Markdown comment on an issue or PR, returns `CommentResult`.
+- `GitHubClient.create_branch()`: create a remote branch from the tip of a base branch, returns `BranchResult`.
+- `GitHubClient.open_pull_request()`: open a PR from a head branch into a base branch, returns `PullRequestResult`.
+- All operations return structured dataclasses (`IssueInfo`, `CommentResult`, `BranchResult`, `PullRequestResult`) with an `error` field — no exceptions surface to the caller.
+- Auth via `GITHUB_TOKEN` environment variable; falls back to unauthenticated access.
+- Added `HephaestusAgent.gh_get_issue()`, `gh_list_issues()`, `gh_post_comment()`, `gh_create_branch()`, `gh_open_pr()` wrappers with lifecycle logging.
+- Added lifecycle logs: `GH_GET_ISSUE_START/COMPLETE`, `GH_LIST_ISSUES_START/COMPLETE`, `GH_COMMENT_START/COMPLETE/FAILED`, `GH_CREATE_BRANCH_START/COMPLETE/FAILED`, `GH_OPEN_PR_START/COMPLETE/FAILED`.
+- Added `PyGithub` to `requirements.txt`.
+- Added `tests/github_client_test.py` with 7 mock-based tests (no live API calls required).
+
+### Changed
+- Updated `README.md` to document GitHub client capability and new lifecycle events.
+
 ## v1.0 — Structured task reporting (2026-03-24)
 
 ### Added
