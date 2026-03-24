@@ -2,7 +2,19 @@
 
 All notable changes to Hephaestus are documented in this file.
 
-## v2.3 — Private repository auth & multi-provider AI (unreleased)
+## v2.4 — Local issue watcher daemon (unreleased)
+
+### Added
+- Added `agent/watcher.py` with `IssueWatcher` class.
+- `IssueWatcher.poll_once()`: fetches open issues carrying the trigger label, handles each new issue, and returns the list of issue numbers handled in that cycle.
+- `IssueWatcher.run_forever()`: blocks and polls indefinitely; Ctrl-C exits cleanly; accepts `stop_after` for testing.
+- `IssueWatcher._handle_issue()`: marks issue processed (pre-pipeline, crash-safe), posts acknowledgement comment, calls `RepoManager.ensure_workspace()` to pull or clone the target repo, creates a `hephaestus/issue-{number}` branch, runs `IssueResolver.resolve()`, and posts a result summary comment.
+- `IssueWatcher._post_result()`: formats plan steps + PR link (or error/status) into a Markdown comment.
+- State persistence via `memory/watcher_state.json` — processed issue numbers survive restarts and are keyed per repo so multiple repos can be watched.
+- Added `HephaestusAgent.watch_repo()` wrapper with `WATCHER_INIT` lifecycle logging.
+- Added `watch` CLI command: `python main.py watch <owner/repo> [--label <label>] [--interval <seconds>]`.
+- Defaults: label `hephaestus/auto`, poll interval 300s (5 minutes).
+- Added `tests/watcher_test.py` with 10 tests covering: no-issue poll, new-issue dispatch, duplicate skip, poll error resilience, state persistence, cross-repo state isolation, acknowledgement comment, result comment content, constant values, and `stop_after` loop control.
 
 ### Added
 - Added `.env.example` documenting all supported environment variables — copy to `.env` and fill in values; the file is gitignored and never committed.

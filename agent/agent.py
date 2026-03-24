@@ -25,6 +25,7 @@ from .task_reasoner import TaskReasoner
 from .task_report import TaskReport, TaskReporter
 from .test_runner import TestRunResult, TestRunner
 from .tools import run_command
+from .watcher import IssueWatcher
 
 
 class HephaestusAgent:
@@ -519,6 +520,35 @@ class HephaestusAgent:
         workspaces = self._get_repo_manager(workspace_root).list_workspaces()
         self.log(f"WORKSPACE_LIST_COMPLETE count={len(workspaces)}")
         return workspaces
+
+    def watch_repo(
+        self,
+        repo_name: str,
+        *,
+        label: str = "hephaestus/auto",
+        poll_interval: int = 300,
+        workspace_root: str = "workspace",
+    ) -> None:
+        """Start the blocking issue watcher loop for a repository.
+
+        Polls ``repo_name`` for issues labeled ``label`` every
+        ``poll_interval`` seconds and runs the full resolution pipeline for
+        each new issue found.  Ctrl-C exits cleanly.
+
+        Args:
+            repo_name: Full GitHub repo name, e.g. ``"owner/repo"``.
+            label: Trigger label.  Defaults to ``"hephaestus/auto"``.
+            poll_interval: Seconds between polls.  Defaults to 300 (5 min).
+            workspace_root: Root dir for managed local clones.
+        """
+        self.log(f"WATCHER_INIT repo={repo_name} label={label} interval={poll_interval}")
+        watcher = IssueWatcher(
+            repo_name,
+            label=label,
+            poll_interval=poll_interval,
+            workspace_root=workspace_root,
+        )
+        watcher.run_forever()
 
     def run_task(self, task: str) -> str:
         """Create a plan and execute steps for the given task."""

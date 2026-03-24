@@ -45,6 +45,7 @@ cp .env.example .env
 - GitHub API client: fetch issues, list issues by label, post comments, create branches, and open pull requests via `GITHUB_TOKEN`.
 - Issue resolver loop: end-to-end plan → patch → test → commit → PR pipeline triggered by a task description or GitHub issue; includes dry-run mode and tests-pass gate.
 - Target repository manager: clone, pull, and branch-manage external repositories into a local `workspace/` directory; supports `ensure_workspace()` for one-call setup before running the resolver.  Private repositories are accessed automatically when `GITHUB_TOKEN` is set.
+- **Local issue watcher daemon**: `python main.py watch owner/repo` — polls GitHub every 5 minutes for issues labeled `hephaestus/auto`, runs the full resolution pipeline for each new issue, posts acknowledgement and result comments, and persists state across restarts so no issue is processed twice.
 
 ## CLI commands
 
@@ -53,6 +54,7 @@ cp .env.example .env
 - `python main.py query <python|tests|entrypoints|dirs>`
 - `python main.py semantic "<query>" --repo <path>`
 - `python main.py plan "<task>"`
+- `python main.py watch <owner/repo> [--label <label>] [--interval <seconds>]`
 
 ## Project structure
 
@@ -71,6 +73,7 @@ cp .env.example .env
 - `agent/github_client.py`: GitHub API wrapper for issues, comments, branches, and pull requests.
 - `agent/issue_resolver.py`: End-to-end issue resolution orchestrator (plan → patch → test → commit → PR).
 - `agent/repo_manager.py`: Target repository manager — clone, pull, and branch external repos into a local workspace.
+- `agent/watcher.py`: Issue watcher daemon — polls GitHub for labeled issues and drives the resolution pipeline.
 - `prompts/dev_agent.md`: System prompt/instructions.
 - `memory/`: Runtime memory artifacts (`repo_index.json`, `repo_embeddings.json`, `task_plan.json`) and static memory files.
 - `logs/`: Agent runtime logs.
@@ -91,6 +94,7 @@ cp .env.example .env
 - GitHub API: `GH_GET_ISSUE_START/COMPLETE`, `GH_LIST_ISSUES_START/COMPLETE`, `GH_COMMENT_START/COMPLETE/FAILED`, `GH_CREATE_BRANCH_START/COMPLETE/FAILED`, `GH_OPEN_PR_START/COMPLETE/FAILED`
 - Issue resolution: `RESOLVE_ISSUE_START`, `RESOLVE_ISSUE_COMPLETE`, `RESOLVE_ISSUE_FAILED`
 - Workspace management: `WORKSPACE_CLONE_START/COMPLETE`, `WORKSPACE_PULL_START/COMPLETE`, `WORKSPACE_CHECKOUT_START/COMPLETE/FAILED`, `WORKSPACE_ENSURE_START/COMPLETE`, `WORKSPACE_LIST_START/COMPLETE`
+- Watcher: `WATCHER_INIT`, `WATCHER_START`, `WATCHER_STOP`, `WATCHER_POLL_START/COMPLETE/ERROR`, `WATCHER_ISSUE_START/COMPLETE/FAILED`, `WATCHER_STATE_LOADED/SAVE_ERROR`
 
 ## Future goals
 

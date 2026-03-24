@@ -19,6 +19,7 @@ def main() -> None:
         print("   or: python main.py query <python|tests|entrypoints|dirs>")
         print("   or: python main.py semantic \"<query>\" --repo <path>")
         print("   or: python main.py plan \"<task>\"")
+        print("   or: python main.py watch <owner/repo> [--label <label>] [--interval <seconds>]")
         return
 
     print("Starting Hephaestus...")
@@ -105,6 +106,33 @@ def main() -> None:
         print("PLAN")
         for index, step in enumerate(plan, start=1):
             print(f"{index}. {step}")
+        return
+
+    if sys.argv[1] == "watch":
+        if len(sys.argv) < 3:
+            print("Usage: python main.py watch <owner/repo> [--label <label>] [--interval <seconds>]")
+            return
+
+        from agent.watcher import DEFAULT_INTERVAL, DEFAULT_LABEL, IssueWatcher
+
+        repo_name = sys.argv[2]
+        watch_args = sys.argv[3:]
+
+        label = DEFAULT_LABEL
+        interval = DEFAULT_INTERVAL
+
+        if "--label" in watch_args:
+            idx = watch_args.index("--label")
+            if idx + 1 < len(watch_args):
+                label = watch_args[idx + 1]
+
+        if "--interval" in watch_args:
+            idx = watch_args.index("--interval")
+            if idx + 1 < len(watch_args):
+                interval = int(watch_args[idx + 1])
+
+        watcher = IssueWatcher(repo_name, label=label, poll_interval=interval)
+        watcher.run_forever()
         return
 
     task = " ".join(sys.argv[1:]).strip()
