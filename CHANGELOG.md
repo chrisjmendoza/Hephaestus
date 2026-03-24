@@ -2,31 +2,24 @@
 
 All notable changes to Hephaestus are documented in this file.
 
-## v2.3 — Private repository authentication (unreleased)
+## v2.3 — Private repository auth & multi-provider AI (unreleased)
 
 ### Added
-- Added `.env.example` documenting `GITHUB_TOKEN` and `OPENAI_API_KEY` — copy to `.env` and fill in values; the file is gitignored and never committed.
+- Added `.env.example` documenting all supported environment variables — copy to `.env` and fill in values; the file is gitignored and never committed.
 - `main.py` now calls `load_dotenv()` at startup so `.env` values are available throughout the agent lifecycle without manual shell exports.
 - `RepoManager._inject_token()`: injects `GITHUB_TOKEN` into HTTPS GitHub clone URLs as `https://x-access-token:<TOKEN>@github.com/...`; leaves SSH URLs and already-credentialed URLs unchanged.
-- `RepoManager.clone()` and `RepoManager.ensure_workspace()` accept an optional `github_token` keyword argument; fall back to `GITHUB_TOKEN` env var when omitted, enabling seamless private repo access.
-- Added 6 new tests in `tests/repo_manager_test.py` (tests 11–16) covering: explicit token injection, env-var fallback, no-token passthrough, SSH URL passthrough, no double-injection guard, and end-to-end `clone()` mock asserting the authenticated URL is passed to `git`.
+- `RepoManager.clone()` and `RepoManager.ensure_workspace()` accept an optional `github_token` keyword argument; fall back to `GITHUB_TOKEN` env var when omitted.
+- Added 6 new tests in `tests/repo_manager_test.py` (tests 11–16) covering token injection, env-var fallback, no-token passthrough, SSH URL passthrough, double-inject guard, and end-to-end mock asserting the authenticated URL reaches `git`.
+- Multi-provider AI support in `TaskReasoner`: set `AI_PROVIDER` to `openai`, `anthropic`, or `openai-compatible`; provider is auto-detected from whichever API key is present when `AI_PROVIDER` is not set.
+- `ANTHROPIC_API_KEY` enables Anthropic (Claude) backend; default model `claude-3-5-haiku-20241022`.
+- `OPENAI_BASE_URL` routes the OpenAI SDK to any compatible endpoint (Ollama, Groq, LM Studio, Together.ai, etc.).
+- `AI_MODEL` overrides the model for any provider.
+- Added `anthropic` to `requirements.txt`.
 
 ### Changed
 - `.gitignore` now includes `.env` to prevent accidental secret commitment.
+- `.env.example` extended with full AI provider documentation and commented examples for all three providers.
 
-### Added
-- Added `agent/repo_manager.py` with `RepoManager` class.
-- `RepoManager.clone()`: clones a remote repository into a managed `workspace/owner/name` directory; no-op if already cloned.
-- `RepoManager.pull()`: fast-forwards an existing clone from its remote.
-- `RepoManager.checkout_branch()`: switches to an existing local branch or creates a new one (`create=True`).
-- `RepoManager.ensure_workspace()`: convenience method that clone-or-pulls a repo and optionally checks out a branch in one call.
-- `RepoManager.list_workspaces()`: returns `WorkspaceInfo` for every managed local clone.
-- `RepoManager.local_path()`: returns the expected local path for an `owner/name` repository.
-- `WorkspaceInfo` dataclass: `repo_name`, `local_path`, `branch`, `commit_sha`, `freshly_cloned`.
-- `BranchCheckoutResult` dataclass: `success`, `branch_name`, `created`, `error`.
-- Added `HephaestusAgent` wrappers: `workspace_clone()`, `workspace_pull()`, `workspace_checkout()`, `workspace_ensure()`, `workspace_list()` with lifecycle logging.
-- Added lifecycle logs: `WORKSPACE_CLONE_START/COMPLETE`, `WORKSPACE_PULL_START/COMPLETE`, `WORKSPACE_CHECKOUT_START/COMPLETE/FAILED`, `WORKSPACE_ENSURE_START/COMPLETE`, `WORKSPACE_LIST_START/COMPLETE`.
-- Added `tests/repo_manager_test.py` with 10 tests covering clone, no-op clone, pull, pull error, branch create, branch checkout, missing-branch error, ensure_workspace, list, and path structure.
 
 ### Changed
 - Updated `README.md` to document repo manager capability, new module, and new lifecycle events.

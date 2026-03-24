@@ -22,7 +22,11 @@ cp .env.example .env
 | Variable | Purpose |
 |---|---|
 | `GITHUB_TOKEN` | GitHub PAT with `repo` scope — enables issue/PR API access **and** cloning private repos |
-| `OPENAI_API_KEY` | OpenAI key for LLM-backed planning (future feature) |
+| `AI_PROVIDER` | `openai` \| `anthropic` \| `openai-compatible` — auto-detected from API keys when omitted |
+| `AI_MODEL` | Override the model for any provider (e.g. `gpt-4o`, `claude-opus-4-5`, `llama3`) |
+| `OPENAI_API_KEY` | OpenAI key — used when `AI_PROVIDER=openai` or auto-detected |
+| `ANTHROPIC_API_KEY` | Anthropic (Claude) key — takes priority in auto-detection when set |
+| `OPENAI_BASE_URL` | Base URL for any OpenAI-compatible server (Ollama, Groq, LM Studio, etc.) |
 
 `.env` is gitignored and will never be committed.
 

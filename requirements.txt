@@ -1,6 +1,8 @@
 openai
+anthropic
 python-dotenv
 rich
 GitPython
 sentence-transformers
 PyGithub
+
