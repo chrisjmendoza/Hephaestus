@@ -6,6 +6,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 
+from .patch_executor import PatchExecutor, PatchResult
 from .planner import TaskPlanner
 from .repo_query import RepoQuery
 from .repo_scanner import RepoScanner
@@ -36,6 +37,7 @@ class HephaestusAgent:
             index_path=Path("memory") / "repo_index.json",
             embeddings_path=Path("memory") / "repo_embeddings.json",
         )
+        self.patch_executor = PatchExecutor()
         self.instructions = self.prompt_path.read_text(encoding="utf-8")
 
     def scan_repo(self, repo_path: str) -> dict:
@@ -90,6 +92,43 @@ class HephaestusAgent:
 
         self.log(f"TASK_REASON_COMPLETE steps={len(plan)}")
         return plan
+
+    def apply_patch(
+        self,
+        file_path: str,
+        new_content: str,
+        dry_run: bool = False,
+    ) -> PatchResult:
+        """Apply a full-content patch to a file, with optional dry-run preview."""
+        self.log(f"PATCH_START {file_path} dry_run={dry_run}")
+        result = self.patch_executor.apply(file_path, new_content, dry_run=dry_run)
+        if result.diff:
+            self.log(f"PATCH_PREVIEW\n{result.diff}")
+        if result.applied:
+            self.log(f"PATCH_APPLIED {file_path}")
+        else:
+            self.log(f"PATCH_SKIPPED {file_path} (dry_run)")
+        return result
+
+    def apply_replacement(
+        self,
+        file_path: str,
+        old_text: str,
+        new_text: str,
+        dry_run: bool = False,
+    ) -> PatchResult:
+        """Replace a specific substring in a file, with optional dry-run preview."""
+        self.log(f"PATCH_START {file_path} dry_run={dry_run}")
+        result = self.patch_executor.apply_replacement(
+            file_path, old_text, new_text, dry_run=dry_run
+        )
+        if result.diff:
+            self.log(f"PATCH_PREVIEW\n{result.diff}")
+        if result.applied:
+            self.log(f"PATCH_APPLIED {file_path}")
+        else:
+            self.log(f"PATCH_SKIPPED {file_path} (dry_run)")
+        return result
 
     def run_task(self, task: str) -> str:
         """Create a plan and execute steps for the given task."""

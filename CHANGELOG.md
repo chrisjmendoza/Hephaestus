@@ -2,6 +2,20 @@
 
 All notable changes to Hephaestus are documented in this file.
 
+## v0.6 — Patch executor with dry-run support (2026-03-24)
+
+### Added
+- Added `agent/patch_executor.py` with `PatchExecutor` class.
+- `PatchExecutor.apply()`: replace full file content with unified diff preview.
+- `PatchExecutor.apply_replacement()`: replace a specific substring (validates uniqueness).
+- `PatchResult` dataclass: captures `file_path`, `diff`, `applied`, `dry_run` outcome.
+- Added `HephaestusAgent.apply_patch()` and `HephaestusAgent.apply_replacement()` wrappers.
+- Added patch lifecycle logs: `PATCH_START`, `PATCH_PREVIEW`, `PATCH_APPLIED`, `PATCH_SKIPPED`.
+- Added `tests/patch_executor_test.py` covering dry-run, live writes, and error cases.
+
+### Changed
+- Updated `README.md` to document patch executor capabilities and new lifecycle events.
+
 ## v0.5.1 — Multi-language repository support (2026-03-08)
 
 ### Added
