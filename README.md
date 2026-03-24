@@ -2,13 +2,29 @@
 
 Hephaestus is a local AI software engineering assistant project focused on safe, incremental development workflows.
 
-Current version includes foundational orchestration, repository introspection, LLM-assisted task planning, GitHub API integration, and an end-to-end issue resolution pipeline.
+Current version includes foundational orchestration, repository introspection, LLM-assisted task planning, GitHub API integration, an end-to-end issue resolution pipeline, and private repository support via `GITHUB_TOKEN`.
 
 ## What is Hephaestus
 
 Hephaestus is designed to accept software development tasks, create a plan, and execute steps through a controlled tool layer.
 
 Current scope focuses on architecture, readability, and modularity rather than full AI integration.
+
+## Configuration
+
+Hephaestus reads secrets from a `.env` file at the project root (loaded automatically on startup).  Copy `.env.example` to `.env` and fill in your values:
+
+```
+cp .env.example .env
+# then edit .env with your tokens
+```
+
+| Variable | Purpose |
+|---|---|
+| `GITHUB_TOKEN` | GitHub PAT with `repo` scope — enables issue/PR API access **and** cloning private repos |
+| `OPENAI_API_KEY` | OpenAI key for LLM-backed planning (future feature) |
+
+`.env` is gitignored and will never be committed.
 
 ## Current capabilities
 
@@ -24,7 +40,7 @@ Current scope focuses on architecture, readability, and modularity rather than f
 - Structured task reports: JSON + human-readable summary of plan, patches, test outcomes, and commits, persisted to memory.
 - GitHub API client: fetch issues, list issues by label, post comments, create branches, and open pull requests via `GITHUB_TOKEN`.
 - Issue resolver loop: end-to-end plan → patch → test → commit → PR pipeline triggered by a task description or GitHub issue; includes dry-run mode and tests-pass gate.
-- Target repository manager: clone, pull, and branch-manage external repositories into a local `workspace/` directory; supports `ensure_workspace()` for one-call setup before running the resolver.
+- Target repository manager: clone, pull, and branch-manage external repositories into a local `workspace/` directory; supports `ensure_workspace()` for one-call setup before running the resolver.  Private repositories are accessed automatically when `GITHUB_TOKEN` is set.
 
 ## CLI commands
 

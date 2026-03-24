@@ -6,11 +6,24 @@ operate on any project without contaminating the Hephaestus codebase.
 Workspaces are stored under a configurable root directory
 (default: ``workspace/`` relative to the Hephaestus project).  Each repo
 gets its own subdirectory keyed by ``owner/name``.
+
+Private repository access
+-------------------------
+Set ``GITHUB_TOKEN`` in your environment (or in a ``.env`` file at the
+project root) to enable cloning private repositories.  When the token is
+present it is automatically injected into the HTTPS clone URL as::
+
+    https://x-access-token:<token>@github.com/owner/repo.git
+
+The same token is used by :class:`~agent.github_client.GitHubClient` for
+API operations (issues, PRs, comments), so a single PAT with ``repo`` scope
+covers everything.
 """
 
 from __future__ import annotations
 
 import logging
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -68,6 +81,7 @@ class RepoManager:
         clone_url: str | None = None,
         *,
         depth: int | None = None,
+        github_token: str | None = None,
     ) -> WorkspaceInfo:
         """Clone ``repo_name`` into the managed workspace.
 
@@ -81,6 +95,9 @@ class RepoManager:
                 ``repo_name`` as ``https://github.com/<repo_name>.git``
                 when omitted.
             depth: Optional shallow-clone depth.
+            github_token: GitHub PAT for private repository access.  When
+                omitted, falls back to the ``GITHUB_TOKEN`` environment
+                variable.  The token is injected into HTTPS URLs only.
 
         Returns:
             :class:`WorkspaceInfo` for the cloned repository.
@@ -91,10 +108,11 @@ class RepoManager:
             logger.info("REPO_MANAGER_CLONE_SKIP already exists at %s", path)
             return self._workspace_info(repo_name, path, freshly_cloned=False)
 
-        url = clone_url or f"https://github.com/{repo_name}.git"
+        base_url = clone_url or f"https://github.com/{repo_name}.git"
+        url = self._inject_token(base_url, github_token)
         path.parent.mkdir(parents=True, exist_ok=True)
 
-        logger.info("REPO_MANAGER_CLONE_START %s -> %s", url, path)
+        logger.info("REPO_MANAGER_CLONE_START %s -> %s", repo_name, path)
         kwargs: dict = {}
         if depth is not None:
             kwargs["depth"] = depth
@@ -211,13 +229,15 @@ class RepoManager:
         branch_name: str | None = None,
         *,
         create_branch: bool = True,
+        github_token: str | None = None,
     ) -> WorkspaceInfo:
         """Clone-or-pull a repo and optionally check out a branch.
 
         This is the primary convenience method for setting up a working
         directory before running the issue resolver.  It:
 
-        1. Clones the repo if not yet present, otherwise pulls latest.
+        1. Clones the repo if not yet present (using token for private repos),
+           otherwise pulls latest.
         2. If ``branch_name`` is provided, checks out / creates that branch.
 
         Args:
@@ -225,6 +245,8 @@ class RepoManager:
             clone_url: Optional explicit clone URL.
             branch_name: Branch to check out after clone/pull.
             create_branch: Whether to create the branch when it doesn't exist.
+            github_token: GitHub PAT for private repo access (falls back to
+                ``GITHUB_TOKEN`` env var).
 
         Returns:
             :class:`WorkspaceInfo` describing the ready workspace.
@@ -233,12 +255,15 @@ class RepoManager:
         if path.exists():
             info = self.pull(repo_name)
         else:
-            info = self.clone(repo_name, clone_url=clone_url)
+            info = self.clone(
+                repo_name, clone_url=clone_url, github_token=github_token
+            )
 
         if branch_name:
             self.checkout_branch(repo_name, branch_name, create=create_branch)
-            # Refresh info with new branch name
-            info = self._workspace_info(repo_name, path, freshly_cloned=info.freshly_cloned)
+            info = self._workspace_info(
+                repo_name, path, freshly_cloned=info.freshly_cloned
+            )
 
         return info
 
@@ -267,6 +292,26 @@ class RepoManager:
     # ------------------------------------------------------------------
     # Private helpers
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def _inject_token(url: str, token: str | None) -> str:
+        """Inject a GitHub token into an HTTPS clone URL.
+
+        Leaves SSH URLs and URLs that already contain credentials unchanged.
+        Falls back to the ``GITHUB_TOKEN`` environment variable when ``token``
+        is not explicitly provided.
+        """
+        resolved = token or os.environ.get("GITHUB_TOKEN", "")
+        if not resolved:
+            return url  # no token — public repo or SSH key
+
+        if url.startswith("https://github.com/") and "@" not in url:
+            url = url.replace(
+                "https://github.com/",
+                f"https://x-access-token:{resolved}@github.com/",
+                1,
+            )
+        return url
 
     @staticmethod
     def _split(repo_name: str) -> tuple[str, str]:

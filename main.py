@@ -4,6 +4,10 @@ from __future__ import annotations
 
 import sys
 
+from dotenv import load_dotenv
+
+load_dotenv()  # Load .env file if present (safe no-op when absent)
+
 from agent.agent import HephaestusAgent
 
 

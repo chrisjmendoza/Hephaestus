@@ -2,7 +2,17 @@
 
 All notable changes to Hephaestus are documented in this file.
 
-## v2.2 — Target repository manager (2026-03-24)
+## v2.3 — Private repository authentication (unreleased)
+
+### Added
+- Added `.env.example` documenting `GITHUB_TOKEN` and `OPENAI_API_KEY` — copy to `.env` and fill in values; the file is gitignored and never committed.
+- `main.py` now calls `load_dotenv()` at startup so `.env` values are available throughout the agent lifecycle without manual shell exports.
+- `RepoManager._inject_token()`: injects `GITHUB_TOKEN` into HTTPS GitHub clone URLs as `https://x-access-token:<TOKEN>@github.com/...`; leaves SSH URLs and already-credentialed URLs unchanged.
+- `RepoManager.clone()` and `RepoManager.ensure_workspace()` accept an optional `github_token` keyword argument; fall back to `GITHUB_TOKEN` env var when omitted, enabling seamless private repo access.
+- Added 6 new tests in `tests/repo_manager_test.py` (tests 11–16) covering: explicit token injection, env-var fallback, no-token passthrough, SSH URL passthrough, no double-injection guard, and end-to-end `clone()` mock asserting the authenticated URL is passed to `git`.
+
+### Changed
+- `.gitignore` now includes `.env` to prevent accidental secret commitment.
 
 ### Added
 - Added `agent/repo_manager.py` with `RepoManager` class.

@@ -208,6 +208,74 @@ def main() -> None:
     assert p.parts[-2:] == ("myorg", "myrepo"), f"unexpected path {p}"
     print("  PASS")
 
+    # ------------------------------------------------------------------ #
+    print("Test 11: _inject_token() builds authenticated URL from explicit token")
+    from agent.repo_manager import RepoManager as RM
+
+    result = RM._inject_token("https://github.com/owner/repo.git", "ghp_testtoken")
+    assert result == "https://x-access-token:ghp_testtoken@github.com/owner/repo.git", result
+    print("  PASS")
+
+    # ------------------------------------------------------------------ #
+    print("Test 12: _inject_token() falls back to GITHUB_TOKEN env var")
+    import os
+
+    os.environ["GITHUB_TOKEN"] = "ghp_envtoken"
+    try:
+        result = RM._inject_token("https://github.com/owner/repo.git", None)
+        assert result == "https://x-access-token:ghp_envtoken@github.com/owner/repo.git", result
+    finally:
+        del os.environ["GITHUB_TOKEN"]
+    print("  PASS")
+
+    # ------------------------------------------------------------------ #
+    print("Test 13: _inject_token() leaves URL unchanged when no token available")
+    os.environ.pop("GITHUB_TOKEN", None)  # ensure not set
+    result = RM._inject_token("https://github.com/owner/repo.git", None)
+    assert result == "https://github.com/owner/repo.git", result
+    print("  PASS")
+
+    # ------------------------------------------------------------------ #
+    print("Test 14: _inject_token() leaves SSH URLs unchanged")
+    result = RM._inject_token("git@github.com:owner/repo.git", "ghp_testtoken")
+    assert result == "git@github.com:owner/repo.git", result
+    print("  PASS")
+
+    # ------------------------------------------------------------------ #
+    print("Test 15: _inject_token() does not double-inject if URL already has credentials")
+    result = RM._inject_token(
+        "https://x-access-token:existing@github.com/owner/repo.git", "ghp_newtoken"
+    )
+    assert "existing" in result, result
+    assert result.count("x-access-token") == 1, result
+    print("  PASS")
+
+    # ------------------------------------------------------------------ #
+    print("Test 16: clone() passes token through to Repo.clone_from")
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmpdir:
+        workspace = Path(tmpdir) / "ws"
+        mgr = RepoManager(workspace_root=workspace)
+
+        captured_urls: list[str] = []
+
+        original_clone_from = __import__("git").Repo.clone_from
+
+        def mock_clone_from(url: str, path: str, **kwargs):  # noqa: ANN001, ANN202
+            captured_urls.append(url)
+            # Actually perform the clone using the original to avoid errors;
+            # but we only care about the URL passed in so we raise to short-circuit.
+            raise RuntimeError("MOCK_STOP")
+
+        with patch("git.Repo.clone_from", side_effect=mock_clone_from):
+            try:
+                mgr.clone("owner/repo", github_token="ghp_mytoken")
+            except RuntimeError:
+                pass
+
+        assert len(captured_urls) == 1
+        assert "x-access-token:ghp_mytoken@" in captured_urls[0], captured_urls[0]
+    print("  PASS")
+
     print("\nAll repo_manager tests passed.")
 
 
