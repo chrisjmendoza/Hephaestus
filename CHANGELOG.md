@@ -2,6 +2,17 @@
 
 All notable changes to Hephaestus are documented in this file.
 
+## Daily Journal
+
+### 2026-03-24
+- Added local issue watcher daemon (`python main.py watch <owner/repo>`) with default label `hephaestus/auto` and 5-minute polling.
+- Added private repository auth flow using `GITHUB_TOKEN`, plus `.env` loading and `.env.example` docs.
+- Added multi-provider AI model configuration via env (`AI_PROVIDER`, `AI_MODEL`, `OPENAI_BASE_URL`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`).
+- Added watcher test coverage (`tests/watcher_test.py`) and verified smoke test pass.
+- Standardized changelog direction toward day-to-day journal entries for ongoing updates.
+
+## Legacy Versioned History
+
 ## v2.4 — Local issue watcher daemon (unreleased)
 
 ### Added
