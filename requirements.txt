@@ -3,3 +3,4 @@ python-dotenv
 rich
 GitPython
 sentence-transformers
+PyGithub

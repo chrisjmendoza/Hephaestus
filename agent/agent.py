@@ -7,6 +7,13 @@ from datetime import datetime
 from pathlib import Path
 
 from .git_context import GitCommitResult, GitContext, GitStatus
+from .github_client import (
+    BranchResult,
+    CommentResult,
+    GitHubClient,
+    IssueInfo,
+    PullRequestResult,
+)
 from .patch_executor import PatchExecutor, PatchResult
 from .planner import TaskPlanner
 from .repo_query import RepoQuery
@@ -46,6 +53,7 @@ class HephaestusAgent:
             report_path=Path("memory") / "task_report.json"
         )
         self._git: GitContext | None = None
+        self._github: GitHubClient | None = None
         self.instructions = self.prompt_path.read_text(encoding="utf-8")
 
     def _get_git(self, repo_path: str = ".") -> GitContext:
@@ -53,6 +61,12 @@ class HephaestusAgent:
         if self._git is None:
             self._git = GitContext(repo_path)
         return self._git
+
+    def _get_github(self, token: str | None = None) -> GitHubClient:
+        """Return a GitHubClient, initializing lazily."""
+        if self._github is None:
+            self._github = GitHubClient(token=token)
+        return self._github
 
     def scan_repo(self, repo_path: str) -> dict:
         """Scan a repository and persist its index to memory."""
@@ -252,6 +266,90 @@ class HephaestusAgent:
         )
         if result.failed_tests:
             self.log(f"TEST_FAILURES {result.failed_tests}")
+        return result
+
+    # ------------------------------------------------------------------
+    # GitHub API helpers
+    # ------------------------------------------------------------------
+
+    def gh_get_issue(
+        self, repo_name: str, issue_number: int
+    ) -> IssueInfo:
+        """Fetch a GitHub issue by number."""
+        self.log(f"GH_GET_ISSUE_START {repo_name}#{issue_number}")
+        issue = self._get_github().get_issue(repo_name, issue_number)
+        self.log(
+            f"GH_GET_ISSUE_COMPLETE #{issue.number} state={issue.state} "
+            f"labels={issue.labels}"
+        )
+        return issue
+
+    def gh_list_issues(
+        self,
+        repo_name: str,
+        label: str | None = None,
+        state: str = "open",
+    ) -> list[IssueInfo]:
+        """List open issues for a repository, optionally filtered by label."""
+        self.log(f"GH_LIST_ISSUES_START {repo_name} label={label} state={state}")
+        issues = self._get_github().list_issues(repo_name, label=label, state=state)
+        self.log(f"GH_LIST_ISSUES_COMPLETE count={len(issues)}")
+        return issues
+
+    def gh_post_comment(
+        self, repo_name: str, issue_number: int, body: str
+    ) -> CommentResult:
+        """Post a comment on a GitHub issue or pull request."""
+        self.log(f"GH_COMMENT_START {repo_name}#{issue_number}")
+        result = self._get_github().post_comment(repo_name, issue_number, body)
+        if result.posted:
+            self.log(f"GH_COMMENT_COMPLETE comment_id={result.comment_id}")
+        else:
+            self.log(f"GH_COMMENT_FAILED error={result.error}")
+        return result
+
+    def gh_create_branch(
+        self,
+        repo_name: str,
+        branch_name: str,
+        base_branch: str = "main",
+    ) -> BranchResult:
+        """Create a remote branch from the tip of base_branch."""
+        self.log(
+            f"GH_CREATE_BRANCH_START {repo_name} {branch_name} from {base_branch}"
+        )
+        result = self._get_github().create_branch(
+            repo_name, branch_name, base_branch=base_branch
+        )
+        if result.created:
+            self.log(
+                f"GH_CREATE_BRANCH_COMPLETE {branch_name} sha={result.sha}"
+            )
+        else:
+            self.log(f"GH_CREATE_BRANCH_FAILED error={result.error}")
+        return result
+
+    def gh_open_pr(
+        self,
+        repo_name: str,
+        title: str,
+        body: str,
+        head_branch: str,
+        base_branch: str = "main",
+    ) -> PullRequestResult:
+        """Open a pull request from head_branch into base_branch."""
+        self.log(
+            f"GH_OPEN_PR_START {repo_name} {head_branch!r} -> {base_branch!r}"
+        )
+        result = self._get_github().open_pull_request(
+            repo_name, title, body, head_branch, base_branch=base_branch
+        )
+        if result.created:
+            self.log(
+                f"GH_OPEN_PR_COMPLETE #{result.number} url={result.url}"
+            )
+        else:
+            self.log(f"GH_OPEN_PR_FAILED error={result.error}")
         return result
 
     def run_task(self, task: str) -> str:
