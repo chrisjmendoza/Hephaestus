@@ -18,6 +18,7 @@ Current scope focuses on architecture, readability, and modularity rather than f
 - Semantic repository search over Python/Kotlin/Java/JS/C#/C++ sources (with XML support for small files).
 - Task reasoning and structured plan generation using repository context.
 - File patching with unified diff preview and dry-run safety mode.
+- Test execution with structured pass/fail results and failure reporting.
 
 ## CLI commands
 
@@ -38,6 +39,7 @@ Current scope focuses on architecture, readability, and modularity rather than f
 - `agent/repo_semantic.py`: Semantic index build and semantic search.
 - `agent/task_reasoner.py`: LLM-based task plan generation using semantic repository context.
 - `agent/patch_executor.py`: File patching with unified diff generation and dry-run support.
+- `agent/test_runner.py`: Test execution via pytest (with direct-run fallback) and structured result reporting.
 - `prompts/dev_agent.md`: System prompt/instructions.
 - `memory/`: Runtime memory artifacts (`repo_index.json`, `repo_embeddings.json`, `task_plan.json`) and static memory files.
 - `logs/`: Agent runtime logs.
@@ -52,6 +54,7 @@ Current scope focuses on architecture, readability, and modularity rather than f
 - Semantic search: `SEMANTIC_SEARCH_START`, `MULTILANG_INDEX_BUILD`, `SEMANTIC_SEARCH_COMPLETE`
 - Task reasoning: `TASK_REASON_START`, `TASK_REASON_COMPLETE`
 - Patch execution: `PATCH_START`, `PATCH_PREVIEW`, `PATCH_APPLIED`, `PATCH_SKIPPED`
+- Test execution: `TEST_RUN_START`, `TEST_RUN_COMPLETE`, `TEST_FAILURES`
 
 ## Future goals
 
