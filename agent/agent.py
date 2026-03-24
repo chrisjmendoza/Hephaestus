@@ -13,6 +13,7 @@ from .repo_query import RepoQuery
 from .repo_scanner import RepoScanner
 from .repo_semantic import RepoSemanticIndex
 from .task_reasoner import TaskReasoner
+from .task_report import TaskReport, TaskReporter
 from .test_runner import TestRunResult, TestRunner
 from .tools import run_command
 
@@ -41,6 +42,9 @@ class HephaestusAgent:
         )
         self.patch_executor = PatchExecutor()
         self.test_runner = TestRunner()
+        self.task_reporter = TaskReporter(
+            report_path=Path("memory") / "task_report.json"
+        )
         self._git: GitContext | None = None
         self.instructions = self.prompt_path.read_text(encoding="utf-8")
 
@@ -102,6 +106,55 @@ class HephaestusAgent:
 
         self.log(f"TASK_REASON_COMPLETE steps={len(plan)}")
         return plan
+
+    def generate_report(
+        self,
+        task: str,
+        plan: list[str],
+        patch_results: list[PatchResult] | None = None,
+        test_results: list[TestRunResult] | None = None,
+        commit_results: list[GitCommitResult] | None = None,
+        outcome: str = "success",
+    ) -> TaskReport:
+        """Build, persist, and return a structured report for a completed task."""
+        self.log(f"TASK_REPORT_START {task}")
+        report = self.task_reporter.start(task, plan)
+
+        for pr in patch_results or []:
+            self.task_reporter.record_patch(
+                report,
+                file_path=pr.file_path,
+                diff=pr.diff,
+                applied=pr.applied,
+                dry_run=pr.dry_run,
+            )
+
+        for tr in test_results or []:
+            self.task_reporter.record_test(
+                report,
+                test_path=" ".join(tr.command),
+                passed=tr.passed,
+                summary=tr.summary,
+                failed_tests=tr.failed_tests,
+            )
+
+        for cr in commit_results or []:
+            self.task_reporter.record_commit(
+                report,
+                commit_sha=cr.commit_sha,
+                commit_message=cr.commit_message,
+                files_committed=cr.files_committed,
+            )
+
+        self.task_reporter.finish(report, outcome=outcome)
+        self.task_reporter.persist(report)
+        self.log(
+            f"TASK_REPORT_COMPLETE outcome={outcome} "
+            f"patches={len(report.patches)} "
+            f"test_runs={len(report.test_runs)} "
+            f"commits={len(report.commits)}"
+        )
+        return report
 
     def git_status(self, repo_path: str = ".") -> GitStatus:
         """Return a structured snapshot of the working tree state."""
