@@ -6,6 +6,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 
+from .git_context import GitCommitResult, GitContext, GitStatus
 from .patch_executor import PatchExecutor, PatchResult
 from .planner import TaskPlanner
 from .repo_query import RepoQuery
@@ -40,7 +41,14 @@ class HephaestusAgent:
         )
         self.patch_executor = PatchExecutor()
         self.test_runner = TestRunner()
+        self._git: GitContext | None = None
         self.instructions = self.prompt_path.read_text(encoding="utf-8")
+
+    def _get_git(self, repo_path: str = ".") -> GitContext:
+        """Return a GitContext for repo_path, initializing lazily."""
+        if self._git is None:
+            self._git = GitContext(repo_path)
+        return self._git
 
     def scan_repo(self, repo_path: str) -> dict:
         """Scan a repository and persist its index to memory."""
@@ -94,6 +102,39 @@ class HephaestusAgent:
 
         self.log(f"TASK_REASON_COMPLETE steps={len(plan)}")
         return plan
+
+    def git_status(self, repo_path: str = ".") -> GitStatus:
+        """Return a structured snapshot of the working tree state."""
+        self.log(f"GIT_STATUS_START {repo_path}")
+        status = self._get_git(repo_path).status()
+        self.log(
+            f"GIT_STATUS_COMPLETE branch={status.branch} "
+            f"dirty={status.is_dirty} "
+            f"staged={len(status.staged_files)} unstaged={len(status.unstaged_files)}"
+        )
+        return status
+
+    def git_diff(self, repo_path: str = ".", file_path: str | None = None) -> str:
+        """Return unified diff of unstaged working-tree changes."""
+        self.log(f"GIT_DIFF_START {file_path or 'all'}")
+        diff = self._get_git(repo_path).diff_working_tree(file_path)
+        self.log(f"GIT_DIFF_COMPLETE chars={len(diff)}")
+        return diff
+
+    def git_commit_patch(
+        self,
+        file_paths: list[str],
+        message: str,
+        repo_path: str = ".",
+    ) -> GitCommitResult:
+        """Stage and commit the given files with a descriptive message."""
+        self.log(f"GIT_COMMIT_START files={file_paths}")
+        result = self._get_git(repo_path).commit_patch(file_paths, message)
+        self.log(
+            f"GIT_COMMIT_COMPLETE sha={result.commit_sha} "
+            f"files={result.files_committed}"
+        )
+        return result
 
     def apply_patch(
         self,

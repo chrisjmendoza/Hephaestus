@@ -2,6 +2,21 @@
 
 All notable changes to Hephaestus are documented in this file.
 
+## v0.9 — Git-aware workflow (2026-03-24)
+
+### Added
+- Added `agent/git_context.py` with `GitContext` class.
+- `GitContext.status()`: returns `GitStatus` with branch, dirty flag, staged/unstaged/untracked file lists, HEAD sha and message.
+- `GitContext.diff_working_tree()`: unified diff of unstaged changes (optionally scoped to one file).
+- `GitContext.diff_staged()`: unified diff of staged changes vs HEAD.
+- `GitContext.commit_patch()`: stages given file paths and creates a commit, returns `GitCommitResult`.
+- Added `HephaestusAgent.git_status()`, `git_diff()`, and `git_commit_patch()` wrappers with lifecycle logging.
+- Added lifecycle logs: `GIT_STATUS_START`, `GIT_STATUS_COMPLETE`, `GIT_DIFF_START`, `GIT_DIFF_COMPLETE`, `GIT_COMMIT_START`, `GIT_COMMIT_COMPLETE`.
+- Added `tests/git_context_test.py` covering status, dirty detection, diff, commit, error handling, and agent integration.
+
+### Changed
+- Updated `README.md` to document git workflow capability and new lifecycle events.
+
 ## v0.8 — Embedding cache with mtime tracking (2026-03-24)
 
 ### Added
