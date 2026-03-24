@@ -30,7 +30,7 @@ def _make_mock_github() -> MagicMock:
     return mock_gh
 
 
-def _init_git_repo(path: Path) -> "git.Repo":
+def _init_git_repo(path: Path):
     """Create a minimal git repo with one commit."""
     import git
 
