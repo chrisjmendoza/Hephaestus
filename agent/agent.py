@@ -14,6 +14,7 @@ from .github_client import (
     IssueInfo,
     PullRequestResult,
 )
+from .issue_resolver import IssueResolver, ResolveResult
 from .patch_executor import PatchExecutor, PatchResult
 from .planner import TaskPlanner
 from .repo_query import RepoQuery
@@ -54,6 +55,7 @@ class HephaestusAgent:
         )
         self._git: GitContext | None = None
         self._github: GitHubClient | None = None
+        self._resolver: IssueResolver | None = None
         self.instructions = self.prompt_path.read_text(encoding="utf-8")
 
     def _get_git(self, repo_path: str = ".") -> GitContext:
@@ -67,6 +69,21 @@ class HephaestusAgent:
         if self._github is None:
             self._github = GitHubClient(token=token)
         return self._github
+
+    def _get_resolver(
+        self,
+        repo_path: str = ".",
+        dry_run: bool = False,
+        github_token: str | None = None,
+    ) -> IssueResolver:
+        """Return an IssueResolver, initializing lazily."""
+        if self._resolver is None:
+            self._resolver = IssueResolver(
+                repo_path=repo_path,
+                dry_run=dry_run,
+                github_token=github_token,
+            )
+        return self._resolver
 
     def scan_repo(self, repo_path: str) -> dict:
         """Scan a repository and persist its index to memory."""
@@ -350,6 +367,65 @@ class HephaestusAgent:
             )
         else:
             self.log(f"GH_OPEN_PR_FAILED error={result.error}")
+        return result
+
+    def resolve_issue(
+        self,
+        task: str,
+        patches: list[tuple[str, str]],
+        repo_path: str = ".",
+        branch_name: str | None = None,
+        github_repo: str | None = None,
+        issue_number: int | None = None,
+        pr_title: str | None = None,
+        pr_body: str | None = None,
+        base_branch: str = "main",
+        dry_run: bool = False,
+        github_token: str | None = None,
+    ) -> ResolveResult:
+        """Run the full plan → patch → test → commit → report → PR pipeline.
+
+        Args:
+            task: Natural-language description of the work to do.
+            patches: List of ``(file_path, new_content)`` tuples to apply.
+            repo_path: Local path to the repository being worked on.
+            branch_name: Branch to commit onto (caller manages checkout).
+            github_repo: Full GitHub repo name, e.g. ``"owner/repo"``.
+                         When provided a PR is opened after a successful commit.
+            issue_number: GitHub issue number to close in the PR body.
+            pr_title: PR title override.
+            pr_body: PR body override.
+            base_branch: Target branch for the PR merge.
+            dry_run: Preview patches without writing or committing.
+            github_token: GitHub PAT (falls back to ``GITHUB_TOKEN`` env var).
+
+        Returns:
+            :class:`ResolveResult` describing every pipeline stage.
+        """
+        self.log(
+            f"RESOLVE_ISSUE_START task={task!r} repo={repo_path} "
+            f"dry_run={dry_run} github_repo={github_repo}"
+        )
+        resolver = self._get_resolver(
+            repo_path=repo_path, dry_run=dry_run, github_token=github_token
+        )
+        result = resolver.resolve(
+            task=task,
+            patches=patches,
+            branch_name=branch_name,
+            github_repo=github_repo,
+            issue_number=issue_number,
+            pr_title=pr_title,
+            pr_body=pr_body,
+            base_branch=base_branch,
+        )
+        if result.success:
+            self.log(
+                f"RESOLVE_ISSUE_COMPLETE success=True "
+                f"pr={result.pull_request.url if result.pull_request else 'none'}"
+            )
+        else:
+            self.log(f"RESOLVE_ISSUE_FAILED error={result.error!r}")
         return result
 
     def run_task(self, task: str) -> str:
