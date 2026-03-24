@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -62,13 +63,20 @@ class GitContext:
 
         try:
             commit_sha = head.commit.hexsha[:8]
-            commit_message = head.commit.message.strip().splitlines()[0]
+            raw_msg = head.commit.message
+            if isinstance(raw_msg, bytes):
+                commit_message: str = raw_msg.decode("utf-8", errors="replace")
+            elif isinstance(raw_msg, str):
+                commit_message = raw_msg
+            else:
+                commit_message = str(raw_msg)
+            commit_message = commit_message.strip().splitlines()[0]
         except ValueError:
             commit_sha = ""
             commit_message = ""
 
-        staged = [item.a_path for item in repo.index.diff("HEAD")]
-        unstaged = [item.a_path for item in repo.index.diff(None)]
+        staged = [item.a_path for item in repo.index.diff("HEAD") if item.a_path is not None]
+        unstaged = [item.a_path for item in repo.index.diff(None) if item.a_path is not None]
         untracked = repo.untracked_files
 
         return GitStatus(
@@ -102,7 +110,11 @@ class GitContext:
         chunks: list[str] = []
         for diff in diff_index:
             try:
-                chunks.append(diff.diff.decode("utf-8", errors="replace"))
+                raw = diff.diff
+                if isinstance(raw, bytes):
+                    chunks.append(raw.decode("utf-8", errors="replace"))
+                elif isinstance(raw, str):
+                    chunks.append(raw)
             except Exception:
                 continue
         return "".join(chunks)
@@ -113,7 +125,11 @@ class GitContext:
         chunks: list[str] = []
         for diff in repo.index.diff("HEAD", create_patch=True):
             try:
-                chunks.append(diff.diff.decode("utf-8", errors="replace"))
+                raw = diff.diff
+                if isinstance(raw, bytes):
+                    chunks.append(raw.decode("utf-8", errors="replace"))
+                elif isinstance(raw, str):
+                    chunks.append(raw)
             except Exception:
                 continue
         return "".join(chunks)
@@ -124,7 +140,7 @@ class GitContext:
 
     def commit_patch(
         self,
-        file_paths: list[str | Path],
+        file_paths: Sequence[str | Path],
         message: str,
         add_untracked: bool = True,
     ) -> GitCommitResult:
