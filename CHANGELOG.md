@@ -2,6 +2,20 @@
 
 All notable changes to Hephaestus are documented in this file.
 
+## v0.7 — Test runner integration (2026-03-24)
+
+### Added
+- Added `agent/test_runner.py` with `TestRunner` class and `TestRunResult` dataclass.
+- `TestRunner.run()`: runs pytest against a path, falls back to direct execution if pytest is absent.
+- `TestRunner.run_file()`: runs a single Hephaestus-style test file directly.
+- `TestRunResult` captures `exit_code`, `stdout`, `stderr`, `passed`, `summary`, and `failed_tests`.
+- Added `HephaestusAgent.run_tests()` and `HephaestusAgent.run_test_file()` wrappers.
+- Added test execution lifecycle logs: `TEST_RUN_START`, `TEST_RUN_COMPLETE`, `TEST_FAILURES`.
+- Added `tests/test_runner_test.py` covering pass, fail, mixed directory, and agent integration.
+
+### Changed
+- Updated `README.md` to document test runner capability and new lifecycle events.
+
 ## v0.6 — Patch executor with dry-run support (2026-03-24)
 
 ### Added

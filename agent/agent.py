@@ -12,6 +12,7 @@ from .repo_query import RepoQuery
 from .repo_scanner import RepoScanner
 from .repo_semantic import RepoSemanticIndex
 from .task_reasoner import TaskReasoner
+from .test_runner import TestRunResult, TestRunner
 from .tools import run_command
 
 
@@ -38,6 +39,7 @@ class HephaestusAgent:
             embeddings_path=Path("memory") / "repo_embeddings.json",
         )
         self.patch_executor = PatchExecutor()
+        self.test_runner = TestRunner()
         self.instructions = self.prompt_path.read_text(encoding="utf-8")
 
     def scan_repo(self, repo_path: str) -> dict:
@@ -128,6 +130,34 @@ class HephaestusAgent:
             self.log(f"PATCH_APPLIED {file_path}")
         else:
             self.log(f"PATCH_SKIPPED {file_path} (dry_run)")
+        return result
+
+    def run_tests(
+        self,
+        test_path: str = "tests",
+        extra_args: list[str] | None = None,
+    ) -> TestRunResult:
+        """Run tests at test_path and return a structured pass/fail result."""
+        self.log(f"TEST_RUN_START {test_path}")
+        result = self.test_runner.run(test_path, extra_args=extra_args)
+        self.log(
+            f"TEST_RUN_COMPLETE exit_code={result.exit_code} "
+            f"passed={result.passed} summary={result.summary!r}"
+        )
+        if result.failed_tests:
+            self.log(f"TEST_FAILURES {result.failed_tests}")
+        return result
+
+    def run_test_file(self, test_file: str) -> TestRunResult:
+        """Run a single test file and return a structured pass/fail result."""
+        self.log(f"TEST_RUN_START {test_file}")
+        result = self.test_runner.run_file(test_file)
+        self.log(
+            f"TEST_RUN_COMPLETE exit_code={result.exit_code} "
+            f"passed={result.passed} summary={result.summary!r}"
+        )
+        if result.failed_tests:
+            self.log(f"TEST_FAILURES {result.failed_tests}")
         return result
 
     def run_task(self, task: str) -> str:
