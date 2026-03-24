@@ -39,7 +39,11 @@ class RepoSemanticIndex:
         return json.loads(self.index_path.read_text(encoding="utf-8"))
 
     def build_index(self, repo_path: str) -> dict:
-        """Build semantic embeddings for indexed source files and persist them."""
+        """Build semantic embeddings for indexed source files and persist them.
+
+        Files whose mtime matches the stored cache are skipped — only new or
+        modified files are re-embedded, and removed files are evicted.
+        """
         repo_root = Path(repo_path).resolve()
         repo_index = self._load_repo_index()
 
@@ -66,26 +70,59 @@ class RepoSemanticIndex:
 
         index_files = sorted(set(source_files + xml_files))
 
-        texts: list[str] = []
-        paths: list[str] = []
+        # Load existing cache keyed by relative path
+        cached: dict[str, dict] = {}
+        if self.embeddings_path.exists():
+            try:
+                existing = json.loads(self.embeddings_path.read_text(encoding="utf-8"))
+                for item in existing.get("files", []):
+                    if item.get("path"):
+                        cached[item["path"]] = item
+            except (json.JSONDecodeError, OSError):
+                cached = {}
+
+        stale_paths: list[str] = []
+        stale_texts: list[str] = []
+
         for relative_path in index_files:
             file_path = repo_root / relative_path
             if not file_path.exists():
                 continue
             try:
+                mtime = file_path.stat().st_mtime
                 content = file_path.read_text(encoding="utf-8")[:1000]
-            except UnicodeDecodeError:
+            except (OSError, UnicodeDecodeError):
                 continue
-            texts.append(content)
-            paths.append(relative_path)
 
-        model = self._get_model()
-        vectors = model.encode(texts, convert_to_numpy=True) if texts else []
+            prior = cached.get(relative_path)
+            if prior and prior.get("mtime") == mtime:
+                # File unchanged — keep cached embedding as-is
+                continue
 
+            stale_paths.append(relative_path)
+            stale_texts.append(content)
+
+        # Re-embed only stale files
+        if stale_texts:
+            model = self._get_model()
+            new_vectors = model.encode(stale_texts, convert_to_numpy=True)
+            for relative_path, vector in zip(stale_paths, new_vectors):
+                file_path = repo_root / relative_path
+                try:
+                    mtime = file_path.stat().st_mtime
+                except OSError:
+                    mtime = 0.0
+                cached[relative_path] = {
+                    "path": relative_path,
+                    "mtime": mtime,
+                    "embedding": vector.tolist(),
+                }
+
+        # Evict files no longer in the index
+        valid_set = set(index_files)
         payload = {
             "files": [
-                {"path": path, "embedding": vector.tolist()}
-                for path, vector in zip(paths, vectors)
+                item for path, item in cached.items() if path in valid_set
             ]
         }
 

@@ -16,6 +16,7 @@ Current scope focuses on architecture, readability, and modularity rather than f
 - Multi-language repository scanning and structural indexing.
 - Repository index querying (Python files, tests, entrypoints, directory summary).
 - Semantic repository search over Python/Kotlin/Java/JS/C#/C++ sources (with XML support for small files).
+- Embedding cache with mtime tracking — unchanged files are skipped on rebuild, modified files are re-embedded, removed files are evicted.
 - Task reasoning and structured plan generation using repository context.
 - File patching with unified diff preview and dry-run safety mode.
 - Test execution with structured pass/fail results and failure reporting.

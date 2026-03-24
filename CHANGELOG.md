@@ -2,6 +2,19 @@
 
 All notable changes to Hephaestus are documented in this file.
 
+## v0.8 — Embedding cache with mtime tracking (2026-03-24)
+
+### Added
+- Added mtime-based cache layer to `RepoSemanticIndex.build_index()`.
+- Each persisted embedding entry now includes a `mtime` field.
+- Unchanged files (mtime matches cache) are skipped entirely — no re-encode.
+- Modified or new files are re-embedded and their cache entries updated.
+- Files removed from the repo index are evicted from the embeddings cache.
+- Added `tests/repo_semantic_cache_test.py` verifying cache hit, re-embed on change, and eviction.
+
+### Changed
+- `repo_embeddings.json` schema extended: each entry now has `path`, `mtime`, `embedding`.
+
 ## v0.7 — Test runner integration (2026-03-24)
 
 ### Added
