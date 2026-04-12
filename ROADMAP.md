@@ -1,6 +1,6 @@
 # Hephaestus Roadmap
 
-Current version: **v2.10**
+Current version: **v2.11**
 
 This file tracks where Hephaestus is headed and why each step matters.
 
@@ -91,14 +91,17 @@ a future autonomous agent working on this repo) would have been misled by it.
 
 ---
 
-### Step 7 — Integration test against a real target repo
+### Step 7 — Integration test against a real target repo ✅ *done in v2.11*
 
-**What it does:** A test that clones a small real (or fixture) repository, runs `run_task()` end-
-to-end against it, and asserts that files were patched, tests ran, and a commit was produced.
+**What it does:** `tests/integration_test.py` — 5 tests that exercise the full stack
+with real file I/O and real git operations using a fixture git repo created in a temp
+directory. The LLM layer is mocked for determinism. Tests cover: `apply_patch` file
+writes, `git_commit_patch` commit creation, `execute_step` implement+commit dispatch,
+full `run_task` lifecycle (log events + memory), and dry-run no-write guarantee.
 
-**Why it matters:** All current tests mock the LLM and git layers. This test would exercise the
-full stack — real LLM call, real file write, real git commit — confirming the system works
-outside the Hephaestus repo itself.
+**Why it matters:** All prior tests mock the LLM and git layers. These tests confirm
+the system works on real files and a real git repo — validating the full execution
+chain outside a pure unit-test context.
 
 ---
 

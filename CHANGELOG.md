@@ -2,6 +2,26 @@
 
 All notable changes to Hephaestus are documented in this file.
 
+## v2.11 — Integration test suite (2026-04-12)
+
+### Added
+- `tests/integration_test.py` — 5 integration tests that exercise the full stack
+  with real file I/O and real git operations (LLM layer mocked for determinism):
+  - `test_apply_patch_modifies_real_file` — `apply_patch()` writes content to a
+    real temp file and produces a valid unified diff.
+  - `test_git_commit_creates_real_commit` — `git_commit_patch()` stages and commits
+    a file in a real `git.Repo`, HEAD SHA advances.
+  - `test_execute_step_patch_then_commit_on_fixture_repo` — `execute_step()` with
+    an `implement` step then a `commit` step runs end-to-end on a fixture git repo:
+    file is patched on disk, commit is created with the new content.
+  - `test_run_task_full_lifecycle` — `run_task()` with analyze-only steps against
+    the Hephaestus repo: all lifecycle events appear in log, memory is recorded.
+  - `test_integration_dry_run_no_file_changes` — `execute_step()` with `dry_run=True`
+    emits `[dry-run]` marker and leaves the fixture file unmodified.
+- Fixture helpers: `_make_fixture_repo()` creates a minimal git repo (calculator.py
+  + test_calculator.py + initial commit); `_cleanup()` handles Windows file-lock
+  cleanup with `shutil.rmtree(ignore_errors=True)`.
+
 ## v2.10 — README rewrite (2026-04-11)
 
 ### Changed
