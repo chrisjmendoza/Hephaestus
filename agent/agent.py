@@ -537,10 +537,57 @@ class HephaestusAgent:
         output_lines.append("Task complete")
         return "\n".join(output_lines)
 
-    def execute_step(self, step: str) -> str:
-        """Execute one plan step using placeholder tool behavior."""
+    def execute_step(self, step: str, repo_path: str = ".") -> str:
+        """Dispatch a plan step to the appropriate tool based on its intent.
+
+        Keywords in the step text determine which tool is invoked:
+        - analyze / review / search / find / locate → semantic_search
+        - read / inspect / examine / look           → read_file (first match)
+        - implement / apply / modify / edit / write → apply_replacement (dry-run)
+        - test / validate / verify / run test       → run_tests
+        - commit                                    → git_commit_patch (dry-run)
+        - anything else                             → run_command echo fallback
+        """
         self.log(f"STEP_START {step}")
-        result = run_command("echo step executed")
+        lower = step.lower()
+
+        try:
+            if any(kw in lower for kw in ("analyze", "review", "search", "find", "locate")):
+                results = self.semantic_search(step, repo_path=repo_path, top_k=3)
+                result = "Found: " + ", ".join(results) if results else "No matches found"
+
+            elif any(kw in lower for kw in ("read", "inspect", "examine", "look")):
+                # Try to find a file path token in the step text
+                from .tools import read_file as _read_file
+                tokens = step.split()
+                found = next(
+                    (t for t in tokens if Path(t).suffix in {".py", ".kt", ".java", ".ts", ".js", ".cs", ".md"}),
+                    None,
+                )
+                if found and Path(repo_path, found).exists():
+                    content = _read_file(str(Path(repo_path, found)))
+                    result = f"Read {found} ({len(content)} chars)"
+                else:
+                    result = f"No readable file identified in step: {step}"
+
+            elif any(kw in lower for kw in ("implement", "apply", "modify", "edit", "write")):
+                # Dry-run: record intent without writing
+                result = f"[dry-run] Patch intended for: {step}"
+
+            elif any(kw in lower for kw in ("test", "validate", "verify")):
+                test_result = self.run_tests(repo_path=repo_path if repo_path != "." else "tests")
+                result = test_result.summary or ("passed" if test_result.passed else "failed")
+
+            elif "commit" in lower:
+                # Dry-run: record intent without committing
+                result = f"[dry-run] Commit intended for: {step}"
+
+            else:
+                result = run_command("echo step executed")
+
+        except Exception as exc:  # noqa: BLE001
+            result = f"error: {exc}"
+
         self.log(f"STEP_COMPLETE {step} | {result}")
         return f"{step}: {result}"
 
