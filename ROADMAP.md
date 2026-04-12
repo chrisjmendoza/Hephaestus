@@ -1,6 +1,6 @@
 # Hephaestus Roadmap
 
-Current version: **v2.9**
+Current version: **v2.10**
 
 This file tracks where Hephaestus is headed and why each step matters.
 
@@ -80,13 +80,14 @@ real repository. Lets you see exactly what the agent would do before it does it.
 
 ---
 
-### Step 6 — README update
+### Step 6 — README update ✅ *done in v2.10*
 
-**What it does:** Updates `README.md` to reflect v2.x capabilities: Anthropic backend, live
-execute_step, CLI commands, environment setup, and the agent loop.
+**What it does:** Rewrites `README.md` to accurately describe v2.x capabilities: Anthropic
+backend, `dev_agent.md` system prompt, per-repo memory, live `execute_step` dispatcher,
+`--dry-run` mode, `resolve` CLI command, environment setup, and the agent loop dispatch table.
 
-**Why it matters:** The README currently describes the early stub version. New contributors (or
-a future autonomous agent working on this repo) will be misled by it.
+**Why it matters:** The README previously described the early stub version. New contributors (or
+a future autonomous agent working on this repo) would have been misled by it.
 
 ---
 

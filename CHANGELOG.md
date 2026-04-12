@@ -2,6 +2,20 @@
 
 All notable changes to Hephaestus are documented in this file.
 
+## v2.10 — README rewrite (2026-04-11)
+
+### Changed
+- Rewrote `README.md` to reflect current v2.9 capabilities:
+  - Accurate project description mentioning LLM reasoning, memory, and dry-run.
+  - Updated capabilities list: per-repo memory, `dev_agent.md` system prompt wiring,
+    dry-run preview, `execute_step` dispatcher.
+  - CLI commands block now includes `resolve` and `--dry-run` options.
+  - New **Environment setup** section with `.env` variable instructions.
+  - Project structure updated with `memory_store.py` and corrected descriptions.
+  - Logging events updated with `DRY_RUN_ENABLED` and `MEMORY_RECORDED`.
+  - New **Agent loop** section with dispatch table showing intent-keyword routing.
+  - Removed stale "Future goals" section (shipped features removed).
+
 ## v2.9 — --dry-run flag (2026-04-11)
 
 ### Added
