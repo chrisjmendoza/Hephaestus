@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "hephaestus-agent"
+version = "2.11.0"
+description = "AI software engineering agent — plan, patch, test, and commit autonomously."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+keywords = ["ai", "agent", "software-engineering", "llm", "automation"]
+dependencies = [
+    "anthropic",
+    "python-dotenv",
+    "rich",
+    "GitPython",
+    "sentence-transformers",
+    "PyGithub",
+]
+
+[project.scripts]
+hep = "main:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["agent*"]
+
+[tool.setuptools.package-data]
+"*" = ["prompts/*.md"]

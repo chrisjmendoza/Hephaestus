@@ -49,7 +49,7 @@ def main() -> None:
     # 1. Integration: get_python_files via real scan
     # ------------------------------------------------------------------
     index_path = project_root / "memory" / "repo_index.json"
-    agent = HephaestusAgent()
+    agent = HephaestusAgent(memory_root=str(project_root / "memory"))
     if not index_path.exists():
         agent.scan_repo(str(project_root))
     assert index_path.exists(), "Repository index file does not exist"

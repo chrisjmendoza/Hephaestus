@@ -2,7 +2,7 @@
 
 Hephaestus is a local AI software engineering assistant designed to accept development tasks, reason about a repository, generate a plan, and execute steps safely — with full lifecycle logging and dry-run preview.
 
-Current version: **v2.9**
+Current version: **v2.15**
 
 ## What is Hephaestus
 
@@ -30,13 +30,32 @@ Hephaestus accepts natural-language software development tasks, creates a struct
 ## CLI commands
 
 ```
-python main.py "<task>" [--dry-run]
-python main.py scan <repo_path>
-python main.py query <python|tests|entrypoints|dirs>
-python main.py semantic "<query>" --repo <path>
-python main.py plan "<task>"
-python main.py resolve <issue_number> [--repo <path>] [--github-repo owner/repo] [--dry-run]
+hep "<task>" [--dry-run]
+hep init
+hep scan <repo_path>
+hep query <python|tests|entrypoints|dirs>
+hep semantic "<query>" --repo <path>
+hep plan "<task>"
+hep resolve <issue_number> [--repo <path>] [--github-repo owner/repo] [--dry-run]
 ```
+
+## Installation
+
+```
+pip install .          # installs the hep command
+# or for development:
+pip install -e .[dev]
+```
+
+After installing, run `hep init` once to scaffold the user data directory:
+
+```
+hep init
+```
+
+This creates `logs/`, `memory/`, and `prompts/` under the platform data dir
+(`%APPDATA%\Hephaestus` on Windows, `~/.local/share/Hephaestus` on Linux,
+`~/Library/Application Support/Hephaestus` on macOS).
 
 ## Environment setup
 
@@ -55,6 +74,7 @@ GITHUB_TOKEN=<your token>       # required for resolve --github-repo
 
 ## Project structure
 
+- `agent/config.py`: Platform-aware user data directory — resolves `logs/`, `memory/`, `prompts/` to `%APPDATA%\Hephaestus` (Windows) or equivalent.
 - `main.py`: CLI entry point.
 - `agent/agent.py`: Core orchestration class (`HephaestusAgent`).
 - `agent/planner.py`: Task planning logic.

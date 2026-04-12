@@ -19,7 +19,7 @@ def main() -> None:
     if index_path.exists():
         index_path.unlink()
 
-    agent = HephaestusAgent()
+    agent = HephaestusAgent(memory_root=str(project_root / "memory"))
     index = agent.scan_repo(str(project_root))
 
     assert index_path.exists(), "Repository index file was not created"

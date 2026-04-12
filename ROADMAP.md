@@ -1,6 +1,6 @@
 # Hephaestus Roadmap
 
-Current version: **v2.11**
+Current version: **v2.15**
 
 This file tracks where Hephaestus is headed and why each step matters.
 

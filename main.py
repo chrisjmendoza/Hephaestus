@@ -7,18 +7,29 @@ import sys
 from dotenv import load_dotenv
 
 from agent.agent import HephaestusAgent
+from agent.config import init_data_dir
 
 
 def main() -> None:
     """Parse CLI input, run the agent task loop, and print results."""
     load_dotenv()
     if len(sys.argv) < 2:
-        print("Usage: python main.py \"<task>\" [--dry-run]")
-        print("   or: python main.py scan <repo_path>")
-        print("   or: python main.py query <python|tests|entrypoints|dirs>")
-        print("   or: python main.py semantic \"<query>\" --repo <path>")
-        print("   or: python main.py plan \"<task>\"")
-        print("   or: python main.py resolve <issue_number> [--repo <path>] [--github-repo owner/repo] [--dry-run]")
+        print("Usage: hep \"<task>\" [--dry-run]")
+        print("   or: hep init")
+        print("   or: hep scan <repo_path>")
+        print("   or: hep query <python|tests|entrypoints|dirs>")
+        print("   or: hep semantic \"<query>\" --repo <path>")
+        print("   or: hep plan \"<task>\"")
+        print("   or: hep resolve <issue_number> [--repo <path>] [--github-repo owner/repo] [--dry-run]")
+        return
+
+    if sys.argv[1] == "init":
+        data = init_data_dir()
+        print(f"Hephaestus data directory initialised: {data}")
+        print(f"  logs/    -> {data / 'logs'}")
+        print(f"  memory/  -> {data / 'memory'}")
+        print(f"  prompts/ -> {data / 'prompts'}")
+        print("Ready. Set ANTHROPIC_API_KEY (and optionally GITHUB_TOKEN) in your environment.")
         return
 
     print("Starting Hephaestus...")
