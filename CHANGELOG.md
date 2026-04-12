@@ -2,6 +2,20 @@
 
 All notable changes to Hephaestus are documented in this file.
 
+## v2.9 — --dry-run flag (2026-04-11)
+
+### Added
+- `--dry-run` flag on the default `run_task` CLI path:
+  `python main.py "<task>" --dry-run` previews the full plan and shows what each step
+  *would* do without writing any files or committing to git.
+- `run_task(task, dry_run=False)` and `execute_step(step, repo_path, dry_run=False)`
+  — destructive branches (implement/patch, test, commit) emit `[dry-run]` messages
+  instead of performing real operations. Read-only branches (search, read) still execute.
+- `DRY_RUN_ENABLED` lifecycle log event emitted when dry-run is active.
+- `tests/dry_run_test.py` with 10 tests covering: per-branch dry-run skipping, search/read
+  pass-through, `run_task` output markers, `DRY_RUN_ENABLED` log event, and CLI flag
+  parsing.
+
 ## v2.8 — Per-repo task memory (2026-04-11)
 
 ### Added

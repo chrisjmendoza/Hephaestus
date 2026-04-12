@@ -529,10 +529,12 @@ class HephaestusAgent:
         self.log(f"WORKSPACE_LIST_COMPLETE count={len(workspaces)}")
         return workspaces
 
-    def run_task(self, task: str) -> str:
+    def run_task(self, task: str, dry_run: bool = False) -> str:
         """Create a plan and execute steps for the given task."""
         output_lines = ["Hephaestus initialized", f"Task received: {task}"]
         self.log(f"TASK_RECEIVED {task}")
+        if dry_run:
+            self.log("DRY_RUN_ENABLED")
 
         plan = self.generate_task_plan(task)
         self.log(f"PLAN_CREATED {plan}")
@@ -541,7 +543,7 @@ class HephaestusAgent:
 
         errors: list[str] = []
         for step in plan:
-            step_output = self.execute_step(step)
+            step_output = self.execute_step(step, dry_run=dry_run)
             output_lines.append(step_output)
             if step_output.startswith("error:") or "[skip]" in step_output:
                 errors.append(step_output)
@@ -554,15 +556,15 @@ class HephaestusAgent:
         output_lines.append("Task complete")
         return "\n".join(output_lines)
 
-    def execute_step(self, step: str, repo_path: str = ".") -> str:
+    def execute_step(self, step: str, repo_path: str = ".", dry_run: bool = False) -> str:
         """Dispatch a plan step to the appropriate tool based on its intent.
 
         Keywords in the step text determine which tool is invoked:
         - analyze / review / search / find / locate → semantic_search
         - read / inspect / examine / look           → read_file (first match)
-        - implement / apply / modify / edit / write → apply_replacement (dry-run)
-        - test / validate / verify / run test       → run_tests
-        - commit                                    → git_commit_patch (dry-run)
+        - implement / apply / modify / edit / write → apply_replacement (skipped in dry-run)
+        - test / validate / verify / run test       → run_tests (skipped in dry-run)
+        - commit                                    → git_commit_patch (skipped in dry-run)
         - anything else                             → run_command echo fallback
         """
         self.log(f"STEP_START {step}")
@@ -588,50 +590,59 @@ class HephaestusAgent:
                     result = f"No readable file identified in step: {step}"
 
             elif re.search(r"\b(implement|apply|modify|edit|write)\b", lower):
-                # Extract a file-path token and apply an LLM-generated patch
-                from .tools import read_file as _read_file
-                tokens = step.split()
-                found = next(
-                    (t for t in tokens if Path(t).suffix in {".py", ".kt", ".java", ".ts", ".js", ".cs", ".md"}),
-                    None,
-                )
-                if found:
-                    target = Path(repo_path) / found
-                    if target.exists():
-                        current = _read_file(str(target))
-                        new_content = self.task_reasoner.generate_patch(
-                            step, str(target), current
-                        )
-                        patch_result = self.apply_patch(str(target), new_content)
-                        result = f"Patched {found}: {len(patch_result.diff)} diff chars"
-                    else:
-                        result = f"[skip] Target file not found: {found}"
+                if dry_run:
+                    result = f"[dry-run] Would patch files for: {step}"
                 else:
-                    result = f"[skip] No target file identified in step: {step}"
+                    # Extract a file-path token and apply an LLM-generated patch
+                    from .tools import read_file as _read_file
+                    tokens = step.split()
+                    found = next(
+                        (t for t in tokens if Path(t).suffix in {".py", ".kt", ".java", ".ts", ".js", ".cs", ".md"}),
+                        None,
+                    )
+                    if found:
+                        target = Path(repo_path) / found
+                        if target.exists():
+                            current = _read_file(str(target))
+                            new_content = self.task_reasoner.generate_patch(
+                                step, str(target), current
+                            )
+                            patch_result = self.apply_patch(str(target), new_content)
+                            result = f"Patched {found}: {len(patch_result.diff)} diff chars"
+                        else:
+                            result = f"[skip] Target file not found: {found}"
+                    else:
+                        result = f"[skip] No target file identified in step: {step}"
 
             elif any(kw in lower for kw in ("test", "validate", "verify")):
-                test_result = self.run_tests(test_path=repo_path if repo_path != "." else "tests")
-                result = test_result.summary or ("passed" if test_result.passed else "failed")
+                if dry_run:
+                    result = f"[dry-run] Would run tests in: {repo_path if repo_path != '.' else 'tests'}"
+                else:
+                    test_result = self.run_tests(test_path=repo_path if repo_path != "." else "tests")
+                    result = test_result.summary or ("passed" if test_result.passed else "failed")
 
             elif "commit" in lower:
-                # Collect modified/staged files from git and commit them
-                try:
-                    status = self.git_status(repo_path)
-                    files_to_commit = status.staged_files or status.unstaged_files
-                    if not files_to_commit:
-                        result = "Nothing to commit: working tree clean"
-                    else:
-                        msg_parts = step.split(None, 1)
-                        commit_msg = msg_parts[1].strip() if len(msg_parts) > 1 else step
-                        commit_result = self.git_commit_patch(
-                            files_to_commit, commit_msg, repo_path
-                        )
-                        result = (
-                            f"Committed {commit_result.files_committed} "
-                            f"sha={commit_result.commit_sha}"
-                        )
-                except Exception as commit_exc:  # noqa: BLE001
-                    result = f"[skip] Commit failed: {commit_exc}"
+                if dry_run:
+                    result = f"[dry-run] Would commit changes for: {step}"
+                else:
+                    # Collect modified/staged files from git and commit them
+                    try:
+                        status = self.git_status(repo_path)
+                        files_to_commit = status.staged_files or status.unstaged_files
+                        if not files_to_commit:
+                            result = "Nothing to commit: working tree clean"
+                        else:
+                            msg_parts = step.split(None, 1)
+                            commit_msg = msg_parts[1].strip() if len(msg_parts) > 1 else step
+                            commit_result = self.git_commit_patch(
+                                files_to_commit, commit_msg, repo_path
+                            )
+                            result = (
+                                f"Committed {commit_result.files_committed} "
+                                f"sha={commit_result.commit_sha}"
+                            )
+                    except Exception as commit_exc:  # noqa: BLE001
+                        result = f"[skip] Commit failed: {commit_exc}"
 
             else:
                 result = run_command("echo step executed")

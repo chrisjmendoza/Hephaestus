@@ -13,7 +13,7 @@ def main() -> None:
     """Parse CLI input, run the agent task loop, and print results."""
     load_dotenv()
     if len(sys.argv) < 2:
-        print("Usage: python main.py \"<task>\"")
+        print("Usage: python main.py \"<task>\" [--dry-run]")
         print("   or: python main.py scan <repo_path>")
         print("   or: python main.py query <python|tests|entrypoints|dirs>")
         print("   or: python main.py semantic \"<query>\" --repo <path>")
@@ -180,8 +180,13 @@ def main() -> None:
             print(f"\nResolution failed: {result.error}")
         return
 
-    task = " ".join(sys.argv[1:]).strip()
-    result = agent.run_task(task)
+    task_args = sys.argv[1:]
+    dry_run = "--dry-run" in task_args
+    task_words = [a for a in task_args if a != "--dry-run"]
+    task = " ".join(task_words).strip()
+    if dry_run:
+        print("(dry-run mode — no files will be written or committed)")
+    result = agent.run_task(task, dry_run=dry_run)
     print(result)
 
 

@@ -1,6 +1,6 @@
 # Hephaestus Roadmap
 
-Current version: **v2.8**
+Current version: **v2.9**
 
 This file tracks where Hephaestus is headed and why each step matters.
 
@@ -68,11 +68,12 @@ repeating mistakes and build context across sessions — a prerequisite for auto
 
 ---
 
-### Step 5 — `--dry-run` CLI flag
+### Step 5 — `--dry-run` CLI flag ✅ *done in v2.9*
 
 **What it does:** Adds a `--dry-run` flag to `run_task` (and `resolve`) that previews plans and
-diffs without writing files or committing. All patch and commit steps print their intended action
-and stop.
+diffs without writing files or committing. Patch, test, and commit steps print their intended
+action with a `[dry-run]` prefix and stop. Read-only steps (search, read/inspect) still execute.
+A `DRY_RUN_ENABLED` lifecycle event is logged when active.
 
 **Why it matters:** Required for safe human review before Hephaestus operates autonomously on a
 real repository. Lets you see exactly what the agent would do before it does it.
