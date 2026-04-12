@@ -2,6 +2,30 @@
 
 All notable changes to Hephaestus are documented in this file.
 
+## v2.5 — Live execute_step: real patching and committing (2026-04-11)
+
+### Changed
+- `implement / apply / modify / edit / write` branch now performs real file patches:
+  - Extracts a file-path token from the step text
+  - Reads current file content
+  - Calls `TaskReasoner.generate_patch()` to generate modified content via LLM
+  - Applies the patch via `apply_patch()` and returns a diff-char count
+  - Returns `[skip]` when no target file is identified or the file doesn't exist
+- `commit` branch now performs real commits:
+  - Calls `git_status()` to determine staged and unstaged files
+  - Derives the commit message from the step text
+  - Calls `git_commit_patch()` to stage and commit
+  - Returns `[skip]` gracefully when no git repository is present or working tree is clean
+- Keyword matching for `implement` branch switched to regex word-boundary (`\bimplement\b`) to
+  prevent false matches on words like "implemented" inside commit-step text
+
+### Added
+- `TaskReasoner.generate_patch(instruction, file_path, current_content)` — LLM-powered method
+  that returns a complete modified file given an instruction and the current content.
+  Falls back to `current_content` when no API key is available.
+- `tests/execute_step_test.py` expanded from 9 to 11 tests covering the real-patch and
+  real-commit paths (mocked LLM / git), as well as graceful skip on missing file/repo.
+
 ## v2.4 — execute_step keyword dispatcher (2026-04-11)
 
 ### Changed

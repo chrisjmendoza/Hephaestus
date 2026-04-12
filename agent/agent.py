@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -570,17 +571,51 @@ class HephaestusAgent:
                 else:
                     result = f"No readable file identified in step: {step}"
 
-            elif any(kw in lower for kw in ("implement", "apply", "modify", "edit", "write")):
-                # Dry-run: record intent without writing
-                result = f"[dry-run] Patch intended for: {step}"
+            elif re.search(r"\b(implement|apply|modify|edit|write)\b", lower):
+                # Extract a file-path token and apply an LLM-generated patch
+                from .tools import read_file as _read_file
+                tokens = step.split()
+                found = next(
+                    (t for t in tokens if Path(t).suffix in {".py", ".kt", ".java", ".ts", ".js", ".cs", ".md"}),
+                    None,
+                )
+                if found:
+                    target = Path(repo_path) / found
+                    if target.exists():
+                        current = _read_file(str(target))
+                        new_content = self.task_reasoner.generate_patch(
+                            step, str(target), current
+                        )
+                        patch_result = self.apply_patch(str(target), new_content)
+                        result = f"Patched {found}: {len(patch_result.diff)} diff chars"
+                    else:
+                        result = f"[skip] Target file not found: {found}"
+                else:
+                    result = f"[skip] No target file identified in step: {step}"
 
             elif any(kw in lower for kw in ("test", "validate", "verify")):
-                test_result = self.run_tests(repo_path=repo_path if repo_path != "." else "tests")
+                test_result = self.run_tests(test_path=repo_path if repo_path != "." else "tests")
                 result = test_result.summary or ("passed" if test_result.passed else "failed")
 
             elif "commit" in lower:
-                # Dry-run: record intent without committing
-                result = f"[dry-run] Commit intended for: {step}"
+                # Collect modified/staged files from git and commit them
+                try:
+                    status = self.git_status(repo_path)
+                    files_to_commit = status.staged_files or status.unstaged_files
+                    if not files_to_commit:
+                        result = "Nothing to commit: working tree clean"
+                    else:
+                        msg_parts = step.split(None, 1)
+                        commit_msg = msg_parts[1].strip() if len(msg_parts) > 1 else step
+                        commit_result = self.git_commit_patch(
+                            files_to_commit, commit_msg, repo_path
+                        )
+                        result = (
+                            f"Committed {commit_result.files_committed} "
+                            f"sha={commit_result.commit_sha}"
+                        )
+                except Exception as commit_exc:  # noqa: BLE001
+                    result = f"[skip] Commit failed: {commit_exc}"
 
             else:
                 result = run_command("echo step executed")

@@ -64,6 +64,62 @@ class TaskReasoner:
             "Update documentation and summarize outcomes",
         ]
 
+    def generate_patch(
+        self,
+        instruction: str,
+        file_path: str,
+        current_content: str,
+        max_content_chars: int = 8000,
+    ) -> str:
+        """Generate modified file content from an instruction and the current file.
+
+        Args:
+            instruction: Natural-language description of the change to make.
+            file_path:   Path to the target file (used for context in the prompt).
+            current_content: Current text of the file.
+            max_content_chars: Truncation limit for large files sent to the LLM.
+
+        Returns:
+            Complete new file content, or *current_content* if the LLM is
+            unavailable or returns an empty response.
+        """
+        api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
+        if not api_key:
+            return current_content
+
+        truncated = current_content[:max_content_chars]
+        system_message = (
+            "You are an expert software engineer.\n"
+            "Given a file's current content and an instruction, "
+            "return ONLY the complete modified file content.\n"
+            "Do NOT include explanations, markdown code fences, or any other text.\n"
+            "Return the raw file content only."
+        )
+        prompt = (
+            f"Instruction:\n{instruction}\n\n"
+            f"File: {file_path}\n\n"
+            f"Current content:\n{truncated}\n"
+        )
+
+        try:
+            client = anthropic.Anthropic(api_key=api_key)
+            response = client.messages.create(
+                model=os.getenv("HEPHAESTUS_PLAN_MODEL", "claude-haiku-4-5-20251001"),
+                max_tokens=4096,
+                system=system_message,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            text_blocks = [b for b in response.content if b.type == "text"]
+            content = (text_blocks[0].text if text_blocks else "").strip()
+            # Strip markdown fences if the model wrapped the output
+            if content.startswith("```"):
+                lines = content.splitlines()
+                end = len(lines) - 1 if lines[-1].strip() == "```" else len(lines)
+                content = "\n".join(lines[1:end])
+            return content if content else current_content
+        except Exception:
+            return current_content
+
     def generate_plan(self, task: str, repo_path: str = ".") -> list[str]:
         """Generate a structured task plan using semantic context and LLM reasoning."""
         repo_root = Path(repo_path).resolve()
