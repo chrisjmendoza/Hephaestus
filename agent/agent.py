@@ -15,10 +15,10 @@ from .github_client import (
     IssueInfo,
     PullRequestResult,
 )
+from .config import default_prompt_path, logs_dir, memory_dir
 from .issue_resolver import IssueResolver, ResolveResult
 from .memory_store import MemoryStore
 from .patch_executor import PatchExecutor, PatchResult
-from .planner import TaskPlanner
 from .repo_manager import BranchCheckoutResult, RepoManager, WorkspaceInfo
 from .repo_query import RepoQuery
 from .repo_scanner import RepoScanner
@@ -34,23 +34,28 @@ class HephaestusAgent:
 
     def __init__(
         self,
-        prompt_path: str = "prompts/dev_agent.md",
-        log_path: str = "logs/hephaestus.log",
+        prompt_path: str | None = None,
+        log_path: str | None = None,
+        memory_root: str | None = None,
     ) -> None:
-        """Initialize dependencies and load instruction prompt."""
-        self.prompt_path = Path(prompt_path)
-        self.log_path = Path(log_path)
-        self.planner = TaskPlanner()
-        self.repo_scanner = RepoScanner(index_path=Path("memory") / "repo_index.json")
-        self.repo_query = RepoQuery(index_path=Path("memory") / "repo_index.json")
+        """Initialize dependencies and load instruction prompt.
+
+        All three paths default to the user data directory resolved by
+        ``agent.config``.  Pass explicit paths to override (e.g. in tests).
+        """
+        self.prompt_path = Path(prompt_path) if prompt_path else default_prompt_path()
+        _memory = Path(memory_root) if memory_root else memory_dir()
+        self.log_path = Path(log_path) if log_path else logs_dir() / "hephaestus.log"
+        self.repo_scanner = RepoScanner(index_path=_memory / "repo_index.json")
+        self.repo_query = RepoQuery(index_path=_memory / "repo_index.json")
         self.repo_semantic = RepoSemanticIndex(
-            index_path=Path("memory") / "repo_index.json",
-            embeddings_path=Path("memory") / "repo_embeddings.json",
+            index_path=_memory / "repo_index.json",
+            embeddings_path=_memory / "repo_embeddings.json",
         )
         self.patch_executor = PatchExecutor()
         self.test_runner = TestRunner()
         self.task_reporter = TaskReporter(
-            report_path=Path("memory") / "task_report.json"
+            report_path=_memory / "task_report.json"
         )
         self._git: GitContext | None = None
         self._github: GitHubClient | None = None
@@ -58,11 +63,11 @@ class HephaestusAgent:
         self._repo_manager: RepoManager | None = None
         self.instructions = self.prompt_path.read_text(encoding="utf-8")
         self.task_reasoner = TaskReasoner(
-            index_path=Path("memory") / "repo_index.json",
-            embeddings_path=Path("memory") / "repo_embeddings.json",
+            index_path=_memory / "repo_index.json",
+            embeddings_path=_memory / "repo_embeddings.json",
             instructions=self.instructions,
         )
-        self.memory = MemoryStore.for_repo(".", memory_root="memory")
+        self.memory = MemoryStore.for_repo(".", memory_root=str(_memory))
 
     def _get_git(self, repo_path: str = ".") -> GitContext:
         """Return a GitContext for repo_path, initializing lazily."""

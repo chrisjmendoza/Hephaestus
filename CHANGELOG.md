@@ -2,6 +2,54 @@
 
 All notable changes to Hephaestus are documented in this file.
 
+## v2.13 — Test coverage expansion (2026-04-12)
+
+### Added
+- `tests/cli_test.py` — 11 tests covering all previously-untested CLI dispatch
+  branches: `scan`, `query` (all four sub-types), `semantic`, and `plan`, plus
+  missing-argument usage-message assertions.
+- `tests/repo_query_test.py` — expanded from 1 to 7 tests: `get_test_files`,
+  `get_entrypoints`, `get_config_files`, `get_directory_summary`, `load_index`
+  `FileNotFoundError` path, and index caching (no redundant disk read).
+- `tests/task_reasoner_test.py` — 10 new assertions covering `_parse_plan_text`
+  (numbered, bullet, blank lines, empty input), `_fallback_plan` (with and
+  without relevant files), and `generate_patch` (no API key, exception fallback,
+  markdown fence stripping, empty LLM response).
+
+### Removed
+- Dead `TaskPlanner` instantiation from `HephaestusAgent.__init__()` — `self.planner`
+  was constructed but never called; the import has also been removed.  `agent/planner.py`
+  is retained.
+
+## v2.12 — `pyproject.toml` + user data directory (2026-04-12)
+
+### Added
+- `agent/config.py` — platform-aware user data directory resolution:
+  - Windows: `%APPDATA%\Hephaestus`
+  - macOS: `~/Library/Application Support/Hephaestus`
+  - Linux: `$XDG_DATA_HOME/Hephaestus` (fallback `~/.local/share/Hephaestus`)
+  - `data_dir()`, `logs_dir()`, `memory_dir()`, `prompts_dir()` helpers.
+  - `default_prompt_path()` returns the user-dir `dev_agent.md`, copying the
+    bundled source on first access.
+  - `init_data_dir()` scaffolds all sub-directories and the prompt file; safe to
+    call multiple times.
+- `pyproject.toml` — `setuptools`-based package definition:
+  - Package name `hephaestus-agent`, version `2.12.0`.
+  - `[project.scripts]` entry point: `hep = main:main` (installs a `hep` command).
+  - `[project.optional-dependencies]` dev extras: `pytest`, `pytest-cov`.
+  - `[tool.setuptools.package-data]` includes `prompts/*.md`.
+- `hep init` CLI command — scaffolds the user data directory and prints all
+  sub-directory paths; safe to run on a fresh install before the first task.
+- `tests/config_test.py` — 12 tests covering platform path resolution (Windows /
+  Linux / macOS), sub-directory creation, `init_data_dir` idempotency, bundled
+  prompt copy, `HephaestusAgent` path wiring, and `hep init` CLI output.
+
+### Changed
+- `HephaestusAgent.__init__()` now defaults all three path parameters
+  (`prompt_path`, `log_path`, `memory_root`) to the config-resolved user data
+  directory instead of hardcoded relative paths. Explicit paths can still be
+  passed (existing tests are unaffected).
+
 ## v2.11 — Integration test suite (2026-04-12)
 
 ### Added
