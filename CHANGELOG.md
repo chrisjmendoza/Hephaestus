@@ -2,6 +2,20 @@
 
 All notable changes to Hephaestus are documented in this file.
 
+## v2.4 — execute_step keyword dispatcher (2026-04-11)
+
+### Changed
+- `execute_step()` replaced with a real keyword dispatcher. Steps are now routed by intent:
+  - `analyze / review / search / find / locate` → `semantic_search()` returning top matching files
+  - `read / inspect / examine / look` → `read_file()` on any `.py/.kt/.java/.ts/.js/.cs/.md` path token in the step text
+  - `implement / apply / modify / edit / write` → dry-run patch message (execution layer coming next)
+  - `test / validate / verify` → `run_tests()`
+  - `commit` → dry-run commit message
+  - anything else → fallback `echo step executed`
+
+### Added
+- Added `tests/execute_step_test.py` with 9 tests covering all dispatch branches, graceful fallbacks, and lifecycle logging.
+
 ## v2.3 — Anthropic integration, unified planning, live repo search (2026-04-11)
 
 ### Changed
