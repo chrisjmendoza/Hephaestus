@@ -2,6 +2,133 @@
 
 All notable changes to Hephaestus are documented in this file.
 
+## v2.11 — Integration test suite (2026-04-12)
+
+### Added
+- `tests/integration_test.py` — 5 integration tests that exercise the full stack
+  with real file I/O and real git operations (LLM layer mocked for determinism):
+  - `test_apply_patch_modifies_real_file` — `apply_patch()` writes content to a
+    real temp file and produces a valid unified diff.
+  - `test_git_commit_creates_real_commit` — `git_commit_patch()` stages and commits
+    a file in a real `git.Repo`, HEAD SHA advances.
+  - `test_execute_step_patch_then_commit_on_fixture_repo` — `execute_step()` with
+    an `implement` step then a `commit` step runs end-to-end on a fixture git repo:
+    file is patched on disk, commit is created with the new content.
+  - `test_run_task_full_lifecycle` — `run_task()` with analyze-only steps against
+    the Hephaestus repo: all lifecycle events appear in log, memory is recorded.
+  - `test_integration_dry_run_no_file_changes` — `execute_step()` with `dry_run=True`
+    emits `[dry-run]` marker and leaves the fixture file unmodified.
+- Fixture helpers: `_make_fixture_repo()` creates a minimal git repo (calculator.py
+  + test_calculator.py + initial commit); `_cleanup()` handles Windows file-lock
+  cleanup with `shutil.rmtree(ignore_errors=True)`.
+
+## v2.10 — README rewrite (2026-04-11)
+
+### Changed
+- Rewrote `README.md` to reflect current v2.9 capabilities:
+  - Accurate project description mentioning LLM reasoning, memory, and dry-run.
+  - Updated capabilities list: per-repo memory, `dev_agent.md` system prompt wiring,
+    dry-run preview, `execute_step` dispatcher.
+  - CLI commands block now includes `resolve` and `--dry-run` options.
+  - New **Environment setup** section with `.env` variable instructions.
+  - Project structure updated with `memory_store.py` and corrected descriptions.
+  - Logging events updated with `DRY_RUN_ENABLED` and `MEMORY_RECORDED`.
+  - New **Agent loop** section with dispatch table showing intent-keyword routing.
+  - Removed stale "Future goals" section (shipped features removed).
+
+## v2.9 — --dry-run flag (2026-04-11)
+
+### Added
+- `--dry-run` flag on the default `run_task` CLI path:
+  `python main.py "<task>" --dry-run` previews the full plan and shows what each step
+  *would* do without writing any files or committing to git.
+- `run_task(task, dry_run=False)` and `execute_step(step, repo_path, dry_run=False)`
+  — destructive branches (implement/patch, test, commit) emit `[dry-run]` messages
+  instead of performing real operations. Read-only branches (search, read) still execute.
+- `DRY_RUN_ENABLED` lifecycle log event emitted when dry-run is active.
+- `tests/dry_run_test.py` with 10 tests covering: per-branch dry-run skipping, search/read
+  pass-through, `run_task` output markers, `DRY_RUN_ENABLED` log event, and CLI flag
+  parsing.
+
+## v2.8 — Per-repo task memory (2026-04-11)
+
+### Added
+- `agent/memory_store.py` — `MemoryStore` class that persists task history per repository
+  under `memory/repos/{slug}.json`.
+  - `TaskRecord` dataclass stores task description, outcome, date, files changed, and error.
+  - `for_repo(repo_path, memory_root)` classmethod resolves the repo directory name and
+    returns a store instance bound to that repo's file.
+  - `record()` appends a new task record and persists to disk immediately.
+  - `recent(n)` returns the last *n* task records.
+  - `context_summary(n)` formats recent records as a plain-text summary suitable for
+    prepending to an LLM prompt.
+  - `_slug()` converts arbitrary repo names to filesystem-safe identifiers (lowercase,
+    alphanumeric + `_` + `-`, defaults to `unknown` for empty names).
+- `HephaestusAgent` now initialises a `MemoryStore` at startup and:
+  - Injects `context_summary(n=5)` into the task string before each LLM planning call,
+    giving the model awareness of recent outcomes.
+  - Calls `memory.record()` after every `run_task()` execution, capturing success/partial/
+    failed outcomes and any error text.
+- `tests/memory_store_test.py` with 8 tests covering: empty store, persistence, reload,
+  `recent(n)` slicing, context summary content, slug rules, agent wiring, and LLM context
+  injection.
+
+## v2.7 — resolve CLI command (2026-04-11)
+
+### Added
+- `python main.py resolve <issue_number>` CLI command.
+  - Fetches the GitHub issue title/body (when `--github-repo owner/repo` is provided) and
+    uses it as the task description.
+  - Generates a plan via `generate_task_plan()`, prints it, then runs the full
+    `resolve_issue()` pipeline (plan -> patch -> test -> commit -> PR).
+  - Supports `--repo <path>` (default `.`), `--github-repo owner/repo`, and `--dry-run`.
+  - Prints the PR URL on success; prints the error message on failure.
+  - Falls back to a generic task description when no GitHub token or repo is provided.
+- `tests/resolve_cli_test.py` with 5 tests covering: missing/invalid args, local dry-run
+  dispatch, GitHub issue fetch + PR URL display, and failure message.
+
+## v2.6 — Wire dev_agent.md into LLM system prompt (2026-04-11)
+
+### Changed
+- `TaskReasoner.__init__()` accepts a new `instructions: str = ""` parameter.
+  When set, the instructions are used as the base system message for every LLM call
+  (both `generate_plan()` and `generate_patch()`), with method-specific directives
+  appended. Falls back to the previous generic system message when empty.
+- `HephaestusAgent.__init__()` now passes `self.instructions` (loaded from
+  `prompts/dev_agent.md`) to `TaskReasoner` at construction time.  All LLM plan
+  and patch calls are now guided by the project's own operating rules:
+  prefer minimal patches, analyze before editing, follow project architecture.
+
+### Added
+- `tests/task_reasoner_test.py` expanded with two new assertions:
+  - Verifies `agent.task_reasoner.instructions` matches the loaded `dev_agent.md` content.
+  - Verifies the custom instructions string appears in the system message sent to the LLM
+    (mocked Anthropic client).
+
+## v2.5 — Live execute_step: real patching and committing (2026-04-11)
+
+### Changed
+- `implement / apply / modify / edit / write` branch now performs real file patches:
+  - Extracts a file-path token from the step text
+  - Reads current file content
+  - Calls `TaskReasoner.generate_patch()` to generate modified content via LLM
+  - Applies the patch via `apply_patch()` and returns a diff-char count
+  - Returns `[skip]` when no target file is identified or the file doesn't exist
+- `commit` branch now performs real commits:
+  - Calls `git_status()` to determine staged and unstaged files
+  - Derives the commit message from the step text
+  - Calls `git_commit_patch()` to stage and commit
+  - Returns `[skip]` gracefully when no git repository is present or working tree is clean
+- Keyword matching for `implement` branch switched to regex word-boundary (`\bimplement\b`) to
+  prevent false matches on words like "implemented" inside commit-step text
+
+### Added
+- `TaskReasoner.generate_patch(instruction, file_path, current_content)` — LLM-powered method
+  that returns a complete modified file given an instruction and the current content.
+  Falls back to `current_content` when no API key is available.
+- `tests/execute_step_test.py` expanded from 9 to 11 tests covering the real-patch and
+  real-commit paths (mocked LLM / git), as well as graceful skip on missing file/repo.
+
 ## v2.4 — execute_step keyword dispatcher (2026-04-11)
 
 ### Changed

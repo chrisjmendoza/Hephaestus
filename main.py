@@ -13,11 +13,12 @@ def main() -> None:
     """Parse CLI input, run the agent task loop, and print results."""
     load_dotenv()
     if len(sys.argv) < 2:
-        print("Usage: python main.py \"<task>\"")
+        print("Usage: python main.py \"<task>\" [--dry-run]")
         print("   or: python main.py scan <repo_path>")
         print("   or: python main.py query <python|tests|entrypoints|dirs>")
         print("   or: python main.py semantic \"<query>\" --repo <path>")
         print("   or: python main.py plan \"<task>\"")
+        print("   or: python main.py resolve <issue_number> [--repo <path>] [--github-repo owner/repo] [--dry-run]")
         return
 
     print("Starting Hephaestus...")
@@ -58,7 +59,7 @@ def main() -> None:
         elif query_type == "entrypoints":
             summary = ", ".join(result) if result else "None"
             print(f"entrypoints: {summary}")
-        elif query_type == "dirs":
+        elif query_type == "dirs" and isinstance(result, dict):
             print("Directory summary:")
             for directory, count in result.items():
                 print(f"{directory}: {count}")
@@ -106,8 +107,86 @@ def main() -> None:
             print(f"{index}. {step}")
         return
 
-    task = " ".join(sys.argv[1:]).strip()
-    result = agent.run_task(task)
+    if sys.argv[1] == "resolve":
+        if len(sys.argv) < 3 or not sys.argv[2].lstrip("-").isdigit():
+            print("Usage: python main.py resolve <issue_number> [--repo <path>] [--github-repo owner/repo] [--dry-run]")
+            return
+
+        resolve_args = sys.argv[2:]
+        issue_number = int(resolve_args[0])
+
+        repo_path = "."
+        github_repo: str | None = None
+        dry_run = False
+
+        i = 1
+        while i < len(resolve_args):
+            arg = resolve_args[i]
+            if arg == "--repo" and i + 1 < len(resolve_args):
+                repo_path = resolve_args[i + 1]
+                i += 2
+            elif arg == "--github-repo" and i + 1 < len(resolve_args):
+                github_repo = resolve_args[i + 1]
+                i += 2
+            elif arg == "--dry-run":
+                dry_run = True
+                i += 1
+            else:
+                i += 1
+
+        import os
+        github_token = os.getenv("GITHUB_TOKEN")
+
+        if not github_repo:
+            print(f"Resolving issue #{issue_number} in {repo_path} (local only, no PR)...")
+        else:
+            print(f"Resolving issue #{issue_number} in {repo_path} via {github_repo}...")
+        if dry_run:
+            print("(dry-run mode — no files will be written or committed)")
+
+        # Fetch the issue to use its title/body as the task description
+        if github_repo:
+            try:
+                issue = agent.gh_get_issue(github_repo, issue_number)
+                task = f"Fix GitHub issue #{issue_number}: {issue.title}\n\n{issue.body or ''}"
+                print(f"Issue: {issue.title}")
+            except Exception as exc:
+                print(f"Could not fetch issue from GitHub: {exc}")
+                task = f"Fix issue #{issue_number}"
+        else:
+            task = f"Fix issue #{issue_number}"
+
+        # Generate a plan to determine which files need patching
+        plan = agent.generate_task_plan(task, repo_path=repo_path)
+        print("\nPLAN:")
+        for idx, step in enumerate(plan, start=1):
+            print(f"  {idx}. {step}")
+
+        result = agent.resolve_issue(
+            task=task,
+            patches=[],  # patches derived from the plan via resolve_issue pipeline
+            repo_path=repo_path,
+            github_repo=github_repo,
+            issue_number=issue_number,
+            dry_run=dry_run,
+            github_token=github_token,
+        )
+
+        if result.success:
+            print(f"\nResolved successfully.")
+            if result.pull_request:
+                print(f"Pull request: {result.pull_request.url}")
+        else:
+            print(f"\nResolution failed: {result.error}")
+        return
+
+    task_args = sys.argv[1:]
+    dry_run = "--dry-run" in task_args
+    task_words = [a for a in task_args if a != "--dry-run"]
+    task = " ".join(task_words).strip()
+    if dry_run:
+        print("(dry-run mode — no files will be written or committed)")
+    result = agent.run_task(task, dry_run=dry_run)
     print(result)
 
 

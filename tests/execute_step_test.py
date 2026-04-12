@@ -66,13 +66,32 @@ def main() -> None:
         print("PASS: read no file found")
 
     # ------------------------------------------------------------------
-    # 5. Implement keyword → dry-run message (no file mutation)
+    # 5. Implement keyword with no target file → [skip] message
     # ------------------------------------------------------------------
     with tempfile.TemporaryDirectory() as tmpdir:
         agent = make_agent(tmpdir)
-        result = agent.execute_step("Implement the changes in tools.py")
-        assert "dry-run" in result, f"Expected dry-run message, got: {result}"
-        print("PASS: implement dry-run")
+        # tools.py does not exist in tmpdir
+        result = agent.execute_step("Implement the changes in tools.py", repo_path=tmpdir)
+        assert "skip" in result.lower(), f"Expected skip message, got: {result}"
+        print("PASS: implement no target file")
+
+    # ------------------------------------------------------------------
+    # 5b. Implement keyword with an existing file → patch applied
+    # ------------------------------------------------------------------
+    with tempfile.TemporaryDirectory() as tmpdir:
+        agent = make_agent(tmpdir)
+        sample = Path(tmpdir) / "sample.py"
+        sample.write_text("x = 1\n", encoding="utf-8")
+        mock_patch = MagicMock()
+        mock_patch.diff = "--- a/sample.py\n+++ b/sample.py\n@@ -1 +1 @@\n-x = 1\n+x = 2\n"
+        mock_patch.applied = True
+        with patch.object(agent.task_reasoner, "generate_patch", return_value="x = 2\n") as mock_gen:
+            with patch.object(agent, "apply_patch", return_value=mock_patch) as mock_apply:
+                result = agent.execute_step(f"Implement the changes in sample.py", repo_path=tmpdir)
+                mock_gen.assert_called_once()
+                mock_apply.assert_called_once()
+                assert "Patched" in result, f"Expected Patched in output, got: {result}"
+        print("PASS: implement real patch")
 
     # ------------------------------------------------------------------
     # 6. Test keyword → run_tests is called
@@ -89,13 +108,32 @@ def main() -> None:
         print("PASS: test dispatch")
 
     # ------------------------------------------------------------------
-    # 7. Commit keyword → dry-run message (no actual commit)
+    # 7. Commit keyword with no git repo → graceful [skip]
     # ------------------------------------------------------------------
     with tempfile.TemporaryDirectory() as tmpdir:
         agent = make_agent(tmpdir)
-        result = agent.execute_step("Commit the implemented changes")
-        assert "dry-run" in result, f"Expected dry-run message, got: {result}"
-        print("PASS: commit dry-run")
+        result = agent.execute_step("Commit the implemented changes", repo_path=tmpdir)
+        assert "skip" in result.lower() or "nothing to commit" in result.lower(), \
+            f"Expected skip or nothing-to-commit message, got: {result}"
+        print("PASS: commit no git repo")
+
+    # ------------------------------------------------------------------
+    # 7b. Commit keyword with staged files → git_commit_patch called
+    # ------------------------------------------------------------------
+    with tempfile.TemporaryDirectory() as tmpdir:
+        agent = make_agent(tmpdir)
+        mock_status = MagicMock()
+        mock_status.staged_files = ["agent/tools.py"]
+        mock_status.unstaged_files = []
+        mock_commit_result = MagicMock()
+        mock_commit_result.files_committed = ["agent/tools.py"]
+        mock_commit_result.commit_sha = "abc1234"
+        with patch.object(agent, "git_status", return_value=mock_status):
+            with patch.object(agent, "git_commit_patch", return_value=mock_commit_result) as mock_commit:
+                result = agent.execute_step("Commit the implemented changes")
+                mock_commit.assert_called_once()
+                assert "Committed" in result, f"Expected Committed in output, got: {result}"
+        print("PASS: commit real commit")
 
     # ------------------------------------------------------------------
     # 8. Unrecognised step → fallback echo
