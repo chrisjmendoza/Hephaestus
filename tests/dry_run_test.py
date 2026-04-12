@@ -118,7 +118,7 @@ def test_cli_dry_run_flag_parsed(monkeypatch=None):
     """Verify main() passes dry_run=True to run_task when --dry-run is present."""
     captured: dict = {}
 
-    def mock_run_task(self, task: str, dry_run: bool = False) -> str:
+    def mock_run_task(self, task: str, dry_run: bool = False, repo_path: str = ".") -> str:
         captured["dry_run"] = dry_run
         captured["task"] = task
         return "done"
@@ -139,7 +139,7 @@ def test_cli_no_dry_run_flag_defaults_false():
     """Verify main() passes dry_run=False when --dry-run is absent."""
     captured: dict = {}
 
-    def mock_run_task(self, task: str, dry_run: bool = False) -> str:
+    def mock_run_task(self, task: str, dry_run: bool = False, repo_path: str = ".") -> str:
         captured["dry_run"] = dry_run
         return "done"
 

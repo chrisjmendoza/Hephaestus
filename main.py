@@ -14,7 +14,7 @@ def main() -> None:
     """Parse CLI input, run the agent task loop, and print results."""
     load_dotenv()
     if len(sys.argv) < 2:
-        print("Usage: hep \"<task>\" [--dry-run]")
+        print("Usage: hep \"<task>\" [--dry-run] [--repo <path>]")
         print("   or: hep init")
         print("   or: hep scan <repo_path>")
         print("   or: hep query <python|tests|entrypoints|dirs>")
@@ -193,11 +193,20 @@ def main() -> None:
 
     task_args = sys.argv[1:]
     dry_run = "--dry-run" in task_args
+    repo_path = "."
+    if "--repo" in task_args:
+        repo_flag_index = task_args.index("--repo")
+        if repo_flag_index + 1 < len(task_args):
+            repo_path = task_args[repo_flag_index + 1]
+            task_args = task_args[:repo_flag_index] + task_args[repo_flag_index + 2:]
+        else:
+            print("Usage: hep \"<task>\" [--dry-run] [--repo <path>]")
+            return
     task_words = [a for a in task_args if a != "--dry-run"]
     task = " ".join(task_words).strip()
     if dry_run:
         print("(dry-run mode — no files will be written or committed)")
-    result = agent.run_task(task, dry_run=dry_run)
+    result = agent.run_task(task, dry_run=dry_run, repo_path=repo_path)
     print(result)
 
 

@@ -54,16 +54,22 @@ class MemoryStore:
     def for_repo(
         cls,
         repo_path: str | Path = ".",
-        memory_root: str | Path = "memory",
+        memory_root: str | Path | None = None,
     ) -> "MemoryStore":
         """Return a MemoryStore scoped to *repo_path*.
 
         The slug is derived from the resolved directory name so that
         ``for_repo(".")`` and ``for_repo("/absolute/path/to/hephaestus")``
         produce the same file when run from the same directory.
+
+        *memory_root* defaults to the config-resolved ``memory_dir()`` so that
+        data persists in the user data directory regardless of the current
+        working directory.
         """
+        from .config import memory_dir as _memory_dir
+        root = Path(memory_root) if memory_root is not None else _memory_dir()
         slug = cls._slug(Path(repo_path).resolve().name)
-        store_path = Path(memory_root) / "repos" / f"{slug}.json"
+        store_path = root / "repos" / f"{slug}.json"
         return cls(store_path)
 
     @classmethod

@@ -157,6 +157,91 @@ def main() -> None:
         assert "STEP_COMPLETE" in log, "Missing STEP_COMPLETE in log"
         print("PASS: lifecycle logging")
 
+    # ------------------------------------------------------------------
+    # 10. Implement step with no path token uses semantic_search (P1.1)
+    # ------------------------------------------------------------------
+    with tempfile.TemporaryDirectory() as tmpdir:
+        agent = make_agent(tmpdir)
+        sample = Path(tmpdir) / "sample.py"
+        sample.write_text("x = 1\n", encoding="utf-8")
+        mock_patch = MagicMock()
+        mock_patch.diff = "--- a/sample.py\n+++ b/sample.py\n@@ -1 +1 @@\n-x = 1\n+x = 2\n"
+        mock_patch.applied = True
+        with patch.object(agent, "semantic_search", return_value=["sample.py"]) as mock_sem:
+            with patch.object(agent.task_reasoner, "generate_patch", return_value="x = 2\n"):
+                with patch.object(agent, "apply_patch", return_value=mock_patch):
+                    result = agent.execute_step(
+                        "Implement the task reasoner edge case handling",
+                        repo_path=tmpdir,
+                    )
+                    mock_sem.assert_called_once()
+                    assert "Patched" in result, f"Expected Patched in output, got: {result}"
+        print("PASS: implement semantic fallback when no path token")
+
+    # ------------------------------------------------------------------
+    # 11. Implement step — semantic_search returns no hits → [skip] message
+    # ------------------------------------------------------------------
+    with tempfile.TemporaryDirectory() as tmpdir:
+        agent = make_agent(tmpdir)
+        with patch.object(agent, "semantic_search", return_value=[]):
+            result = agent.execute_step(
+                "Implement the task reasoner edge case handling",
+                repo_path=tmpdir,
+            )
+            assert "skip" in result.lower(), f"Expected skip when semantic returns nothing, got: {result}"
+        print("PASS: implement semantic fallback returns no hits → skip")
+
+    # ------------------------------------------------------------------
+    # 12. Implement step — LLM returns unchanged content → PATCH_FAILED then
+    #     retry; second call returns changed content → patch applied
+    # ------------------------------------------------------------------
+    with tempfile.TemporaryDirectory() as tmpdir:
+        agent = make_agent(tmpdir)
+        sample = Path(tmpdir) / "sample.py"
+        original = "x = 1\n"
+        sample.write_text(original, encoding="utf-8")
+        mock_patch = MagicMock()
+        mock_patch.diff = "@@ -1 +1 @@\n-x = 1\n+x = 2\n"
+        mock_patch.applied = True
+        call_count = {"n": 0}
+
+        def _gen_patch(instruction, file_path, current_content):
+            call_count["n"] += 1
+            # First call returns unchanged; second (retry) returns changed
+            return original if call_count["n"] == 1 else "x = 2\n"
+
+        log_path = Path(tmpdir) / "test.log"
+        agent2 = HephaestusAgent(log_path=str(log_path))
+        with patch.object(agent2.task_reasoner, "generate_patch", side_effect=_gen_patch):
+            with patch.object(agent2, "apply_patch", return_value=mock_patch) as mock_apply:
+                result = agent2.execute_step(
+                    f"Implement the changes in sample.py",
+                    repo_path=tmpdir,
+                )
+                assert call_count["n"] == 2, f"Expected 2 generate_patch calls, got {call_count['n']}"
+                mock_apply.assert_called_once()
+                assert "Patched" in result, f"Expected Patched in result, got: {result}"
+        log = log_path.read_text(encoding="utf-8")
+        assert "PATCH_FAILED" in log, "Expected PATCH_FAILED lifecycle event in log"
+        print("PASS: implement retry on unchanged LLM content")
+
+    # ------------------------------------------------------------------
+    # 13. Implement step — LLM returns unchanged on both tries → [skip]
+    # ------------------------------------------------------------------
+    with tempfile.TemporaryDirectory() as tmpdir:
+        agent = make_agent(tmpdir)
+        sample = Path(tmpdir) / "sample.py"
+        original = "x = 1\n"
+        sample.write_text(original, encoding="utf-8")
+        with patch.object(agent.task_reasoner, "generate_patch", return_value=original):
+            result = agent.execute_step(
+                f"Implement the changes in sample.py",
+                repo_path=tmpdir,
+            )
+            assert "skip" in result.lower() and "PATCH_FAILED" in result, \
+                f"Expected skip+PATCH_FAILED when both tries unchanged, got: {result}"
+        print("PASS: implement both retries unchanged → skip")
+
     print("\n=== execute_step tests PASSED ===")
 
 

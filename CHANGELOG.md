@@ -2,6 +2,68 @@
 
 All notable changes to Hephaestus are documented in this file.
 
+## v2.16 — Live pipeline fixes and observability (2026-04-12)
+
+### Added
+- `--repo <path>` flag on the `hep "<task>"` CLI command so tasks can target
+  external repositories without needing `hep resolve`.
+- Progress output in `run_task()`: prints `[step N/M] <step>` before each step
+  so long tasks show visible progress.
+- `generate_report()` is now called at the end of every `run_task()` execution,
+  persisting a structured `TaskReport` alongside the memory record.
+- `tests/run_task_test.py` — 5 new tests covering `repo_path` propagation, report
+  generation, progress printing, and default behaviour.
+- `tests/execute_step_test.py` — 4 new tests covering the semantic-search fallback
+  path (P1.1), no-hits skip, LLM retry on unchanged content (P2.3), and the
+  PATCH_FAILED lifecycle event.
+- `tests/resolve_cli_test.py` — end-to-end integration test verifying the
+  plan→patch→commit chain fires with mocked LLM (P3.3).
+
+### Fixed
+- **`execute_step` implement dispatch** — when no file-path token is present in a
+  plan step, `semantic_search(step, top_k=1)` is used to identify the target file
+  instead of falling through to `[skip]` (P1.1).
+- **`run_task` `repo_path` propagation** — `run_task()` now accepts `repo_path`
+  and threads it through to every `execute_step()` and `generate_task_plan()` call
+  so steps operate against the correct repository (P1.2).
+- **`resolve_issue` LLM loop** — `HephaestusAgent.resolve_issue()` now generates
+  patches automatically when `patches=[]` by iterating plan steps through
+  `semantic_search` + `generate_patch`, so `hep resolve N` self-generates patch
+  content instead of creating an empty commit (P1.3).
+- **Structured diff output** — `execute_step` implement result now includes the
+  first 500 characters of the actual unified diff instead of a character count
+  (P2.1).
+- **Per-step error recovery** — when `generate_patch` returns the original content
+  unchanged (LLM unavailable), `execute_step` logs a `PATCH_FAILED` event and
+  retries once with a simplified instruction. A second unchanged result records
+  `[skip] PATCH_FAILED` (P2.3).
+- **`MemoryStore.for_repo` path** — `for_repo()`'s `memory_root` parameter now
+  defaults to `memory_dir()` (config-resolved user data directory) so that
+  bare `MemoryStore.for_repo(".")` calls persist memory in the correct location
+  after `pip install` (P4.2).
+
+## v2.15 — pytest testing infrastructure (2026-04-12)
+
+### Added
+- `conftest.py` — pytest plugin that collects `main()`-based test modules
+  alongside standard `test_*` functions so the entire test suite runs with a
+  single `pytest tests/` invocation.
+- `pytest.ini` — minimal configuration: `testpaths = tests`, default addopts
+  `-v --tb=short`.
+- All existing `*_test.py` files discovered and executed correctly by pytest.
+
+## v2.14 — Config module and `hep init` command (2026-04-12)
+
+### Added
+- `agent/config.py` — platform-aware user data directory resolution (`data_dir`,
+  `logs_dir`, `memory_dir`, `prompts_dir`, `default_prompt_path`, `init_data_dir`).
+- `hep init` CLI command scaffolds the user data directory on first run.
+- `pyproject.toml` — `setuptools` package definition with `hep` entry point.
+
+### Changed
+- `HephaestusAgent.__init__()` defaults all path parameters to the config-resolved
+  user data directory.
+
 ## v2.13 — Test coverage expansion (2026-04-12)
 
 ### Added

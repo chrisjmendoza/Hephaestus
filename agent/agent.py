@@ -407,9 +407,14 @@ class HephaestusAgent:
     ) -> ResolveResult:
         """Run the full plan → patch → test → commit → report → PR pipeline.
 
+        When *patches* is empty the method generates patches automatically by
+        running each plan step through ``semantic_search`` + ``generate_patch``
+        to produce the ``(file_path, new_content)`` pairs passed to the resolver.
+
         Args:
             task: Natural-language description of the work to do.
             patches: List of ``(file_path, new_content)`` tuples to apply.
+                     Pass an empty list to let the agent self-generate them.
             repo_path: Local path to the repository being worked on.
             branch_name: Branch to commit onto (caller manages checkout).
             github_repo: Full GitHub repo name, e.g. ``"owner/repo"``.
@@ -428,6 +433,36 @@ class HephaestusAgent:
             f"RESOLVE_ISSUE_START task={task!r} repo={repo_path} "
             f"dry_run={dry_run} github_repo={github_repo}"
         )
+
+        # When no pre-computed patches are supplied, drive the plan→patch loop
+        # ourselves: generate a plan, find the best-matching file per step via
+        # semantic search, and produce patches with the LLM.
+        if not patches:
+            self.log("RESOLVE_ISSUE_GENERATING_PATCHES plan→patch loop starting")
+            plan = self.generate_task_plan(task, repo_path=repo_path)
+            generated: list[tuple[str, str]] = []
+            from .tools import read_file as _read_file
+            for step in plan:
+                hits = self.semantic_search(step, repo_path=repo_path, top_k=1)
+                if not hits:
+                    self.log(f"RESOLVE_ISSUE_NO_TARGET_FILE step={step!r}")
+                    continue
+                target = Path(repo_path) / hits[0]
+                if not target.exists():
+                    continue
+                try:
+                    current = _read_file(str(target))
+                except OSError:
+                    continue
+                new_content = self.task_reasoner.generate_patch(step, str(target), current)
+                if new_content != current:
+                    generated.append((str(target), new_content))
+                    self.log(f"RESOLVE_ISSUE_PATCH_GENERATED {hits[0]}")
+                else:
+                    self.log(f"RESOLVE_ISSUE_PATCH_UNCHANGED {hits[0]} step={step!r}")
+            patches = generated
+            self.log(f"RESOLVE_ISSUE_PATCHES_READY count={len(patches)}")
+
         resolver = self._get_resolver(
             repo_path=repo_path, dry_run=dry_run, github_token=github_token
         )
@@ -534,21 +569,24 @@ class HephaestusAgent:
         self.log(f"WORKSPACE_LIST_COMPLETE count={len(workspaces)}")
         return workspaces
 
-    def run_task(self, task: str, dry_run: bool = False) -> str:
+    def run_task(self, task: str, dry_run: bool = False, repo_path: str = ".") -> str:
         """Create a plan and execute steps for the given task."""
         output_lines = ["Hephaestus initialized", f"Task received: {task}"]
         self.log(f"TASK_RECEIVED {task}")
         if dry_run:
             self.log("DRY_RUN_ENABLED")
 
-        plan = self.generate_task_plan(task)
+        plan = self.generate_task_plan(task, repo_path=repo_path)
         self.log(f"PLAN_CREATED {plan}")
         output_lines.append(f"Plan generated: {plan}")
         output_lines.append("Executing steps")
 
         errors: list[str] = []
-        for step in plan:
-            step_output = self.execute_step(step, dry_run=dry_run)
+        patch_results: list[PatchResult] = []
+        total = len(plan)
+        for idx, step in enumerate(plan, start=1):
+            print(f"[step {idx}/{total}] {step}")
+            step_output = self.execute_step(step, repo_path=repo_path, dry_run=dry_run)
             output_lines.append(step_output)
             if step_output.startswith("error:") or "[skip]" in step_output:
                 errors.append(step_output)
@@ -556,6 +594,8 @@ class HephaestusAgent:
         outcome = "failed" if len(errors) == len(plan) else ("partial" if errors else "success")
         self.memory.record(task, outcome)
         self.log(f"MEMORY_RECORDED outcome={outcome}")
+
+        self.generate_report(task, plan, patch_results=patch_results, outcome=outcome)
 
         self.log("TASK_COMPLETE")
         output_lines.append("Task complete")
@@ -598,13 +638,18 @@ class HephaestusAgent:
                 if dry_run:
                     result = f"[dry-run] Would patch files for: {step}"
                 else:
-                    # Extract a file-path token and apply an LLM-generated patch
+                    # Extract a file-path token and apply an LLM-generated patch.
+                    # When no explicit path token is present, use semantic search
+                    # to find the most relevant file for this step.
                     from .tools import read_file as _read_file
                     tokens = step.split()
                     found = next(
                         (t for t in tokens if Path(t).suffix in {".py", ".kt", ".java", ".ts", ".js", ".cs", ".md"}),
                         None,
                     )
+                    if not found:
+                        sem_hits = self.semantic_search(step, repo_path=repo_path, top_k=1)
+                        found = sem_hits[0] if sem_hits else None
                     if found:
                         target = Path(repo_path) / found
                         if target.exists():
@@ -612,8 +657,21 @@ class HephaestusAgent:
                             new_content = self.task_reasoner.generate_patch(
                                 step, str(target), current
                             )
-                            patch_result = self.apply_patch(str(target), new_content)
-                            result = f"Patched {found}: {len(patch_result.diff)} diff chars"
+                            if new_content == current:
+                                self.log(f"PATCH_FAILED step={step!r} — LLM returned unchanged content, retrying")
+                                new_content = self.task_reasoner.generate_patch(
+                                    f"Apply this change: {step}", str(target), current
+                                )
+                            if new_content == current:
+                                result = f"[skip] PATCH_FAILED: LLM returned no change for {found}"
+                            else:
+                                patch_result = self.apply_patch(str(target), new_content)
+                                diff_excerpt = patch_result.diff[:500] if patch_result.diff else ""
+                                result = (
+                                    f"Patched {found}:\n{diff_excerpt}"
+                                    if diff_excerpt
+                                    else f"Patched {found}: (empty diff)"
+                                )
                         else:
                             result = f"[skip] Target file not found: {found}"
                     else:

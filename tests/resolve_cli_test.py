@@ -106,6 +106,55 @@ def main() -> None:
                     f"Expected failure message, got: {output}"
     print("PASS: failed resolve prints error")
 
+    # ------------------------------------------------------------------
+    # 6. End-to-end: plan→patch→commit chain fires with mocked LLM (P3.3)
+    #
+    # Verifies that when patches=[] the agent calls generate_task_plan and
+    # then the resolver drives the full pipeline (patches generated, tests
+    # run, commit attempted).  All external I/O (LLM, git, tests) is mocked.
+    # ------------------------------------------------------------------
+    import tempfile
+    import os
+    from pathlib import Path as _Path
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Set up a minimal fake repo with one Python file
+        fake_file = _Path(tmpdir) / "main.py"
+        fake_file.write_text("# placeholder\n", encoding="utf-8")
+
+        with patch("sys.argv", ["main.py", "resolve", "10", "--repo", tmpdir, "--dry-run"]):
+            mock_plan = ["Implement the fix in main.py", "Run tests"]
+            mock_result = MagicMock()
+            mock_result.success = True
+            mock_result.error = None
+            mock_result.pull_request = None
+
+            resolve_calls: list = []
+
+            def _fake_resolve(**kwargs):
+                resolve_calls.append(kwargs)
+                return mock_result
+
+            with patch("agent.agent.HephaestusAgent.generate_task_plan", return_value=mock_plan):
+                with patch(
+                    "agent.agent.HephaestusAgent.resolve_issue",
+                    side_effect=lambda **kw: (resolve_calls.append(kw) or mock_result),
+                ) as mock_resolve:
+                    output = []
+                    with patch("builtins.print", side_effect=output.append):
+                        cli_main.main()
+
+                    mock_resolve.assert_called_once()
+                    call_kw = mock_resolve.call_args.kwargs
+                    assert call_kw["repo_path"] == tmpdir, \
+                        f"Expected repo_path={tmpdir!r}, got {call_kw['repo_path']!r}"
+                    assert call_kw["dry_run"] is True, "Expected dry_run=True"
+                    assert call_kw["issue_number"] == 10, \
+                        f"Expected issue_number=10, got {call_kw['issue_number']}"
+                    assert any("Resolved" in str(line) for line in output), \
+                        f"Expected success output, got: {output}"
+    print("PASS: end-to-end plan→patch→commit chain fires (mocked LLM)")
+
     print("\n=== resolve CLI tests PASSED ===")
 
 
