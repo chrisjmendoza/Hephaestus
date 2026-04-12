@@ -12,9 +12,17 @@ logs/*
 !logs/.gitkeep
 *.log
 
+# Runtime memory artifacts
+memory/repo_index.json
+memory/repo_embeddings.json
+memory/task_plan.json
+
 # Editor settings
 .vscode/
 
 # OS files
 .DS_Store
 Thumbs.db
+
+# Local environment — never commit
+.env

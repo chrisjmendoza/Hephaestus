@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import sys
 
+from dotenv import load_dotenv
+
 from agent.agent import HephaestusAgent
 
 
 def main() -> None:
     """Parse CLI input, run the agent task loop, and print results."""
+    load_dotenv()
     if len(sys.argv) < 2:
         print("Usage: python main.py \"<task>\"")
         print("   or: python main.py scan <repo_path>")

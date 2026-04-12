@@ -2,6 +2,19 @@
 
 All notable changes to Hephaestus are documented in this file.
 
+## v2.3 — Anthropic integration, unified planning, live repo search (2026-04-11)
+
+### Changed
+- Switched LLM backend from OpenAI to Anthropic (`anthropic` package). Default planning model: `claude-haiku-4-5-20251001`.
+- `run_task()` now delegates to `generate_task_plan()` / `TaskReasoner` instead of the static `TaskPlanner` stub. Falls back to deterministic plan when no API key is set.
+- `search_repo()` in `agent/tools.py` replaced placeholder string return with live `RepoSemanticIndex.search()`. Now returns `list[str]` of matching file paths.
+- Fixed Anthropic response parsing to filter for `TextBlock` before accessing `.text` (avoids type errors on `ThinkingBlock`, `ToolUseBlock`, etc.)
+- Replaced `openai` with `anthropic` in `requirements.txt`.
+- Runtime memory artifacts (`repo_index.json`, `repo_embeddings.json`, `task_plan.json`) added to `.gitignore`.
+
+### Added
+- Added `load_dotenv()` call in `main.py` so a `.env` file is loaded at startup. `ANTHROPIC_API_KEY` and `HEPHAESTUS_PLAN_MODEL` can be set via `.env` or Windows User environment variables.
+
 ## v2.2 — Target repository manager (2026-03-24)
 
 ### Added

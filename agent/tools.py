@@ -19,9 +19,11 @@ def write_file(path: str, content: str) -> str:
     return str(target)
 
 
-def search_repo(query: str) -> str:
-    """Placeholder repository search implementation."""
-    return f"search_repo placeholder: '{query}'"
+def search_repo(query: str, top_k: int = 5) -> list[str]:
+    """Search the repository using semantic similarity for the given query."""
+    from .repo_semantic import RepoSemanticIndex  # lazy to avoid heavy startup cost
+    index = RepoSemanticIndex()
+    return index.search(query, top_k=top_k)
 
 
 def run_command(cmd: str) -> str:

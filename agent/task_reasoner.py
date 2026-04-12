@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from openai import OpenAI
+import anthropic
 
 from .repo_scanner import RepoScanner
 from .repo_semantic import RepoSemanticIndex
@@ -19,7 +19,7 @@ class TaskReasoner:
         index_path: str | Path = "memory/repo_index.json",
         embeddings_path: str | Path = "memory/repo_embeddings.json",
     ) -> None:
-        """Initialize repository context helpers and OpenAI client setup."""
+        """Initialize repository context helpers and Anthropic client setup."""
         self.index_path = Path(index_path)
         self.embeddings_path = Path(embeddings_path)
         self.repo_scanner = RepoScanner(index_path=self.index_path)
@@ -92,21 +92,22 @@ class TaskReasoner:
             "Only describe the steps required."
         )
 
-        api_key = os.getenv("OPENAI_API_KEY", "").strip()
+        api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
         if not api_key:
             return self._fallback_plan(task, relevant_files)
 
         try:
-            client = OpenAI(api_key=api_key)
-            response = client.chat.completions.create(
-                model=os.getenv("HEPHAESTUS_PLAN_MODEL", "gpt-4o-mini"),
-                temperature=0,
+            client = anthropic.Anthropic(api_key=api_key)
+            response = client.messages.create(
+                model=os.getenv("HEPHAESTUS_PLAN_MODEL", "claude-haiku-4-5-20251001"),
+                max_tokens=1024,
+                system=system_message,
                 messages=[
-                    {"role": "system", "content": system_message},
                     {"role": "user", "content": prompt},
                 ],
             )
-            content = (response.choices[0].message.content or "").strip()
+            text_blocks = [b for b in response.content if b.type == "text"]
+            content = (text_blocks[0].text if text_blocks else "").strip()
             parsed = self._parse_plan_text(content)
             return parsed if parsed else self._fallback_plan(task, relevant_files)
         except Exception:

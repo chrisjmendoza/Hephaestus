@@ -525,7 +525,7 @@ class HephaestusAgent:
         output_lines = ["Hephaestus initialized", f"Task received: {task}"]
         self.log(f"TASK_RECEIVED {task}")
 
-        plan = self.planner.create_plan(task)
+        plan = self.generate_task_plan(task)
         self.log(f"PLAN_CREATED {plan}")
         output_lines.append(f"Plan generated: {plan}")
         output_lines.append("Executing steps")
