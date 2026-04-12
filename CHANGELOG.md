@@ -2,6 +2,29 @@
 
 All notable changes to Hephaestus are documented in this file.
 
+## v2.8 — Per-repo task memory (2026-04-11)
+
+### Added
+- `agent/memory_store.py` — `MemoryStore` class that persists task history per repository
+  under `memory/repos/{slug}.json`.
+  - `TaskRecord` dataclass stores task description, outcome, date, files changed, and error.
+  - `for_repo(repo_path, memory_root)` classmethod resolves the repo directory name and
+    returns a store instance bound to that repo's file.
+  - `record()` appends a new task record and persists to disk immediately.
+  - `recent(n)` returns the last *n* task records.
+  - `context_summary(n)` formats recent records as a plain-text summary suitable for
+    prepending to an LLM prompt.
+  - `_slug()` converts arbitrary repo names to filesystem-safe identifiers (lowercase,
+    alphanumeric + `_` + `-`, defaults to `unknown` for empty names).
+- `HephaestusAgent` now initialises a `MemoryStore` at startup and:
+  - Injects `context_summary(n=5)` into the task string before each LLM planning call,
+    giving the model awareness of recent outcomes.
+  - Calls `memory.record()` after every `run_task()` execution, capturing success/partial/
+    failed outcomes and any error text.
+- `tests/memory_store_test.py` with 8 tests covering: empty store, persistence, reload,
+  `recent(n)` slicing, context summary content, slug rules, agent wiring, and LLM context
+  injection.
+
 ## v2.7 — resolve CLI command (2026-04-11)
 
 ### Added

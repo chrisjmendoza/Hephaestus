@@ -59,7 +59,7 @@ def main() -> None:
         elif query_type == "entrypoints":
             summary = ", ".join(result) if result else "None"
             print(f"entrypoints: {summary}")
-        elif query_type == "dirs":
+        elif query_type == "dirs" and isinstance(result, dict):
             print("Directory summary:")
             for directory, count in result.items():
                 print(f"{directory}: {count}")

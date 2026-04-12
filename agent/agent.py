@@ -16,6 +16,7 @@ from .github_client import (
     PullRequestResult,
 )
 from .issue_resolver import IssueResolver, ResolveResult
+from .memory_store import MemoryStore
 from .patch_executor import PatchExecutor, PatchResult
 from .planner import TaskPlanner
 from .repo_manager import BranchCheckoutResult, RepoManager, WorkspaceInfo
@@ -61,6 +62,7 @@ class HephaestusAgent:
             embeddings_path=Path("memory") / "repo_embeddings.json",
             instructions=self.instructions,
         )
+        self.memory = MemoryStore.for_repo(".", memory_root="memory")
 
     def _get_git(self, repo_path: str = ".") -> GitContext:
         """Return a GitContext for repo_path, initializing lazily."""
@@ -138,7 +140,12 @@ class HephaestusAgent:
     def generate_task_plan(self, task: str, repo_path: str = ".") -> list[str]:
         """Generate and persist a structured development plan for a task."""
         self.log(f"TASK_REASON_START {task}")
-        plan = self.task_reasoner.generate_plan(task, repo_path=repo_path)
+
+        # Prepend recent memory so the LLM can avoid repeating past mistakes
+        memory_context = self.memory.context_summary(n=5)
+        enriched_task = f"{task}\n\n{memory_context}" if memory_context else task
+
+        plan = self.task_reasoner.generate_plan(enriched_task, repo_path=repo_path)
 
         task_plan_path = Path("memory") / "task_plan.json"
         task_plan_path.parent.mkdir(parents=True, exist_ok=True)
@@ -532,8 +539,16 @@ class HephaestusAgent:
         output_lines.append(f"Plan generated: {plan}")
         output_lines.append("Executing steps")
 
+        errors: list[str] = []
         for step in plan:
-            output_lines.append(self.execute_step(step))
+            step_output = self.execute_step(step)
+            output_lines.append(step_output)
+            if step_output.startswith("error:") or "[skip]" in step_output:
+                errors.append(step_output)
+
+        outcome = "failed" if len(errors) == len(plan) else ("partial" if errors else "success")
+        self.memory.record(task, outcome)
+        self.log(f"MEMORY_RECORDED outcome={outcome}")
 
         self.log("TASK_COMPLETE")
         output_lines.append("Task complete")

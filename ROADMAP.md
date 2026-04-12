@@ -1,6 +1,6 @@
 # Hephaestus Roadmap
 
-Current version: **v2.5**
+Current version: **v2.8**
 
 This file tracks where Hephaestus is headed and why each step matters.
 
@@ -55,13 +55,13 @@ the full pipeline is only accessible programmatically.
 
 ---
 
-### Step 4 — Memory: read/write `memory/memory.json`
+### Step 4 — Memory: per-repo task history ✅ *done in v2.8*
 
-**What it does:** Hephaestus currently has a `memory/memory.json` file but nothing reads or
-writes it during task execution. This step adds:
-- Load prior task history and decisions at startup
-- Persist task outcomes (what was tried, what passed, what failed) after each run
-- Optionally feed recent memory into the LLM context for better continuity
+**What it does:** Adds `agent/memory_store.py` — a `MemoryStore` class that persists task
+outcomes per repository under `memory/repos/{slug}.json`. At startup the agent loads the
+store; after each run it records the outcome (success / partial / failed). The last 5
+records are summarised and injected into the LLM context before planning, giving
+Hephaestus awareness of what worked or failed previously.
 
 **Why it matters:** Without memory, every task starts cold. With it, Hephaestus can avoid
 repeating mistakes and build context across sessions — a prerequisite for autonomous maintenance.
