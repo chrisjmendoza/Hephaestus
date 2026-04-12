@@ -38,7 +38,7 @@ intends.
 
 ---
 
-### Step 3 — `resolve <issue_number>` CLI command
+### Step 3 — `resolve <issue_number>` CLI command ✅ *done in v2.7*
 
 **What it does:** Adds a new top-level command to `main.py`:
 

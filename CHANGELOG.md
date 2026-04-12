@@ -2,6 +2,20 @@
 
 All notable changes to Hephaestus are documented in this file.
 
+## v2.7 — resolve CLI command (2026-04-11)
+
+### Added
+- `python main.py resolve <issue_number>` CLI command.
+  - Fetches the GitHub issue title/body (when `--github-repo owner/repo` is provided) and
+    uses it as the task description.
+  - Generates a plan via `generate_task_plan()`, prints it, then runs the full
+    `resolve_issue()` pipeline (plan -> patch -> test -> commit -> PR).
+  - Supports `--repo <path>` (default `.`), `--github-repo owner/repo`, and `--dry-run`.
+  - Prints the PR URL on success; prints the error message on failure.
+  - Falls back to a generic task description when no GitHub token or repo is provided.
+- `tests/resolve_cli_test.py` with 5 tests covering: missing/invalid args, local dry-run
+  dispatch, GitHub issue fetch + PR URL display, and failure message.
+
 ## v2.6 — Wire dev_agent.md into LLM system prompt (2026-04-11)
 
 ### Changed
