@@ -651,21 +651,22 @@ class HephaestusAgent:
                         sem_hits = self.semantic_search(step, repo_path=repo_path, top_k=1)
                         found = sem_hits[0] if sem_hits else None
                     if found:
-                        target = Path(repo_path) / found
-                        if target.exists():
-                            current = _read_file(str(target))
+                        target_path = Path(repo_path) / found
+                        if target_path.exists():
+                            current = _read_file(str(target_path))
                             new_content = self.task_reasoner.generate_patch(
-                                step, str(target), current
+                                step, str(target_path), current
                             )
                             if new_content == current:
                                 self.log(f"PATCH_FAILED step={step!r} — LLM returned unchanged content, retrying")
                                 new_content = self.task_reasoner.generate_patch(
-                                    f"Apply this change: {step}", str(target), current
+                                    f"Apply this change: {step}", str(target_path), current
                                 )
                             if new_content == current:
                                 result = f"[skip] PATCH_FAILED: LLM returned no change for {found}"
                             else:
-                                patch_result = self.apply_patch(str(target), new_content)
+                                patch_result = self.apply_patch(str(target_path), new_content)
+                                # Include the first 500 chars of the diff so the report is human-readable
                                 diff_excerpt = patch_result.diff[:500] if patch_result.diff else ""
                                 result = (
                                     f"Patched {found}:\n{diff_excerpt}"

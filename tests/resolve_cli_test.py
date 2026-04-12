@@ -129,16 +129,10 @@ def main() -> None:
             mock_result.error = None
             mock_result.pull_request = None
 
-            resolve_calls: list = []
-
-            def _fake_resolve(**kwargs):
-                resolve_calls.append(kwargs)
-                return mock_result
-
             with patch("agent.agent.HephaestusAgent.generate_task_plan", return_value=mock_plan):
                 with patch(
                     "agent.agent.HephaestusAgent.resolve_issue",
-                    side_effect=lambda **kw: (resolve_calls.append(kw) or mock_result),
+                    return_value=mock_result,
                 ) as mock_resolve:
                     output = []
                     with patch("builtins.print", side_effect=output.append):
