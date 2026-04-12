@@ -46,10 +46,6 @@ class HephaestusAgent:
             index_path=Path("memory") / "repo_index.json",
             embeddings_path=Path("memory") / "repo_embeddings.json",
         )
-        self.task_reasoner = TaskReasoner(
-            index_path=Path("memory") / "repo_index.json",
-            embeddings_path=Path("memory") / "repo_embeddings.json",
-        )
         self.patch_executor = PatchExecutor()
         self.test_runner = TestRunner()
         self.task_reporter = TaskReporter(
@@ -60,6 +56,11 @@ class HephaestusAgent:
         self._resolver: IssueResolver | None = None
         self._repo_manager: RepoManager | None = None
         self.instructions = self.prompt_path.read_text(encoding="utf-8")
+        self.task_reasoner = TaskReasoner(
+            index_path=Path("memory") / "repo_index.json",
+            embeddings_path=Path("memory") / "repo_embeddings.json",
+            instructions=self.instructions,
+        )
 
     def _get_git(self, repo_path: str = ".") -> GitContext:
         """Return a GitContext for repo_path, initializing lazily."""

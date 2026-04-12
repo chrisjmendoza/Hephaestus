@@ -18,10 +18,21 @@ class TaskReasoner:
         self,
         index_path: str | Path = "memory/repo_index.json",
         embeddings_path: str | Path = "memory/repo_embeddings.json",
+        instructions: str = "",
     ) -> None:
-        """Initialize repository context helpers and Anthropic client setup."""
+        """Initialize repository context helpers and Anthropic client setup.
+
+        Args:
+            index_path: Path to the persisted repository index JSON.
+            embeddings_path: Path to the persisted embedding vectors JSON.
+            instructions: Optional agent system prompt (e.g. content of
+                ``prompts/dev_agent.md``).  When provided it is used as the
+                base system message for all LLM calls, keeping the agent's
+                operating rules in scope for every plan and patch request.
+        """
         self.index_path = Path(index_path)
         self.embeddings_path = Path(embeddings_path)
+        self.instructions = instructions.strip()
         self.repo_scanner = RepoScanner(index_path=self.index_path)
         self.repo_semantic = RepoSemanticIndex(
             index_path=self.index_path,
@@ -88,12 +99,16 @@ class TaskReasoner:
             return current_content
 
         truncated = current_content[:max_content_chars]
-        system_message = (
-            "You are an expert software engineer.\n"
+        patch_rules = (
             "Given a file's current content and an instruction, "
             "return ONLY the complete modified file content.\n"
             "Do NOT include explanations, markdown code fences, or any other text.\n"
             "Return the raw file content only."
+        )
+        system_message = (
+            f"{self.instructions}\n\n{patch_rules}"
+            if self.instructions
+            else f"You are an expert software engineer.\n{patch_rules}"
         )
         prompt = (
             f"Instruction:\n{instruction}\n\n"
@@ -140,12 +155,16 @@ class TaskReasoner:
             f"Code context:\n{context_block}\n"
         )
 
-        system_message = (
-            "You are an experienced software engineer planning a code change.\n\n"
+        planning_rules = (
             "Given a repository context and a development task,\n"
             "produce a clear step-by-step implementation plan.\n\n"
             "Do NOT write code.\n"
             "Only describe the steps required."
+        )
+        system_message = (
+            f"{self.instructions}\n\n{planning_rules}"
+            if self.instructions
+            else f"You are an experienced software engineer planning a code change.\n\n{planning_rules}"
         )
 
         api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()

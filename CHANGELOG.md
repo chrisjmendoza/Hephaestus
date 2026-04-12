@@ -2,6 +2,24 @@
 
 All notable changes to Hephaestus are documented in this file.
 
+## v2.6 — Wire dev_agent.md into LLM system prompt (2026-04-11)
+
+### Changed
+- `TaskReasoner.__init__()` accepts a new `instructions: str = ""` parameter.
+  When set, the instructions are used as the base system message for every LLM call
+  (both `generate_plan()` and `generate_patch()`), with method-specific directives
+  appended. Falls back to the previous generic system message when empty.
+- `HephaestusAgent.__init__()` now passes `self.instructions` (loaded from
+  `prompts/dev_agent.md`) to `TaskReasoner` at construction time.  All LLM plan
+  and patch calls are now guided by the project's own operating rules:
+  prefer minimal patches, analyze before editing, follow project architecture.
+
+### Added
+- `tests/task_reasoner_test.py` expanded with two new assertions:
+  - Verifies `agent.task_reasoner.instructions` matches the loaded `dev_agent.md` content.
+  - Verifies the custom instructions string appears in the system message sent to the LLM
+    (mocked Anthropic client).
+
 ## v2.5 — Live execute_step: real patching and committing (2026-04-11)
 
 ### Changed
